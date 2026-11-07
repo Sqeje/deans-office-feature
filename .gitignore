@@ -1,0 +1,12 @@
+.tools/
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.env
+*.user
+TestResults/
+artifacts/
+**/keys/
+**/test-results/
+**/playwright-report/

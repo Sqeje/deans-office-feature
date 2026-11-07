@@ -1,0 +1,66 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: dean
+          POSTGRES_DB: dean_test
+          POSTGRES_PASSWORD: ci-disposable-only
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE: Host=localhost;Database=dean_test;Username=dean;Password=ci-disposable-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: dotnet tool restore
+      - run: dotnet build backend/Dean.Api/Dean.Api.csproj --configuration Release
+      - run: dotnet ef migrations has-pending-model-changes --project backend/Dean.Api
+        env:
+          ConnectionStrings__Database: ${{ env.TEST_DATABASE }}
+      - run: dotnet test backend/Dean.Api.Tests --configuration Release
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - name: Prepare browser test database and credentials
+        env:
+          PGPASSWORD: ci-disposable-only
+        run: |
+          psql -h localhost -U dean -d postgres -c 'CREATE DATABASE dean_e2e;'
+          echo "Demo__Password1=$(openssl rand -hex 20)Aa!1" >> "$GITHUB_ENV"
+          echo "Demo__Password2=$(openssl rand -hex 20)Bb!2" >> "$GITHUB_ENV"
+          echo "Demo__StaffPassword=$(openssl rand -hex 20)Cc!3" >> "$GITHUB_ENV"
+      - name: Start browser test API
+        env:
+          ConnectionStrings__Database: Host=localhost;Database=dean_e2e;Username=dean;Password=ci-disposable-only
+          Demo__Enabled: 'true'
+          ASPNETCORE_ENVIRONMENT: Development
+          DataProtection__Path: /tmp/dean-e2e-keys
+        run: |
+          dotnet run --no-build -c Release --project backend/Dean.Api -- --initialize
+          dotnet run --no-build -c Release --project backend/Dean.Api --urls http://localhost:8080 > /tmp/dean-api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/health && exit 0; sleep 1; done
+          cat /tmp/dean-api.log
+          exit 1
+      - name: Browser smoke test
+        working-directory: frontend
+        run: |
+          npm run api:generate
+          git diff --exit-code -- src/shared/schema.d.ts
+          npx playwright install --with-deps chromium
+          export DEMO_PASSWORD1="$Demo__Password1"
+          export DEMO_PASSWORD2="$Demo__Password2"
+          export DEMO_STAFF_PASSWORD="$Demo__StaffPassword"
+          npx playwright test

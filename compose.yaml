@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  initialize:
+    build: ./backend
+    command: [--initialize]
+    environment: &api-environment
+      ConnectionStrings__Database: Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Demo__Enabled: ${Demo__Enabled:-false}
+      Demo__Password1: ${Demo__Password1:-}
+      Demo__Password2: ${Demo__Password2:-}
+      Demo__StaffPassword: ${Demo__StaffPassword:-}
+      DataProtection__Path: /keys
+    volumes:
+      - keys:/keys
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    build: ./backend
+    environment: *api-environment
+    volumes:
+      - keys:/keys
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-https://localhost}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    restart: unless-stopped
+volumes:
+  db:
+  keys:
+  caddy_data:
+  caddy_config:

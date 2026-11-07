@@ -1,0 +1,83 @@
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { api, ApiError, type Profile } from "../../shared/api";
+import { useSession } from "../../shared/session";
+import { Denied, EmptyState, ErrorState, Loading } from "../../shared/states";
+export function StudentHome() {
+  const { session } = useSession();
+  return (
+    <>
+      <p className="text-sm text-slate-500">ЛИЧНЫЙ КАБИНЕТ СТУДЕНТА</p>
+      <h1>Здравствуйте, {session?.displayName}</h1>
+      <EmptyState
+        title="Всё важное об учёбе — рядом"
+        text="Это фундамент демонстрационного приложения. Учебные разделы появятся в следующих срезах."
+      />
+    </>
+  );
+}
+const permissionLabels: Record<string, string> = {
+  "requests.manage": "Обработка обращений",
+  "schedule.write": "Изменение расписания",
+  "grades.write": "Внесение оценок",
+  "announcements.publish": "Публикация объявлений",
+  "sources.manage": "Управление подключениями",
+};
+export function StaffHome() {
+  const { session } = useSession();
+  return (
+    <>
+      <p className="text-sm text-slate-500">РАБОЧЕЕ МЕСТО СОТРУДНИКА</p>
+      <h1>Здравствуйте, {session?.displayName}</h1>
+      <EmptyState
+        title="Ваши полномочия"
+        text="Разделы доступны согласно назначенным разрешениям. Рабочие операции появятся в следующих срезах."
+      />
+      <ul className="card mt-4 space-y-3">
+        {session?.permissions.map((p, i) => (
+          <li key={i} className="break-words">
+            {permissionLabels[p.permission] ?? "Дополнительное разрешение"} —{" "}
+            {p.groupId ? "Назначенная группа" : "Свой университет"}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+export function ProfilePage() {
+  const [profile, setProfile] = useState<Profile | null>();
+  const [error, setError] = useState(false);
+  const [denied, setDenied] = useState(false);
+  useEffect(() => {
+    api
+      .me()
+      .then(setProfile)
+      .catch((e) =>
+        e instanceof ApiError && e.status === 403
+          ? setDenied(true)
+          : setError(true),
+      );
+  }, []);
+  if (denied) return <Denied />;
+  if (error) return <ErrorState />;
+  if (profile === null) return <Navigate to="/login" replace />;
+  if (!profile) return <Loading />;
+  return (
+    <>
+      <h1>Мой профиль</h1>
+      <dl className="card space-y-4">
+        {[
+          ["ФИО", profile.fullName],
+          ["Почта", profile.email],
+          ["Университет", profile.university],
+          ["Группа", profile.group],
+        ].map(([k, v]) => (
+          <div key={k}>
+            <dt className="text-sm text-slate-500">{k}</dt>
+            <dd className="break-words font-medium">{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+}
