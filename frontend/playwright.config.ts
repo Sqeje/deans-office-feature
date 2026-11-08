@@ -9,7 +9,7 @@ export default defineConfig({
       : {},
   },
   webServer: {
-    command: "npm run dev",
+    command: "node node_modules/vite/bin/vite.js --host 127.0.0.1",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
   },

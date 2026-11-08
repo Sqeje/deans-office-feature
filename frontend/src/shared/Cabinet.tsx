@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Link, NavLink, Navigate, Outlet } from "react-router-dom";
-import { useState } from "react";
+import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "./session";
 import { Denied, ErrorState, Loading } from "./states";
 import { modulePages } from "../modules/sections";
@@ -23,6 +23,16 @@ export function PageAccess({
 }
 export function Cabinet({ area }: { area: Area }) {
   const { session, error, logout } = useSession();
+  const { pathname } = useLocation();
+  const main = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const heading = main.current?.querySelector("h1");
+    if (heading) {
+      heading.tabIndex = -1;
+      window.scrollTo(0, 0);
+      heading.focus({ preventScroll: true });
+    }
+  }, [pathname, session]);
   const [failed, setFailed] = useState(false);
   if (error || failed) return <ErrorState />;
   if (session === undefined) return <Loading />;
@@ -42,6 +52,9 @@ export function Cabinet({ area }: { area: Area }) {
   );
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-8">
+      <a href="#cabinet-content" className="skip-link">
+        Перейти к содержимому
+      </a>
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <Link to={"/" + area} className="text-lg font-bold">
           Цифровой деканат
@@ -77,10 +90,13 @@ export function Cabinet({ area }: { area: Area }) {
               </Link>
             ))}
         </nav>
-        <main className="min-w-0">
+        <main className="min-w-0" id="cabinet-content" ref={main} tabIndex={-1}>
           <Outlet />
         </main>
       </div>
+      <footer className="prototype-notice">
+        Конкурсный концепт, не официальный сайт
+      </footer>
     </div>
   );
 }
