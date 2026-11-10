@@ -23,6 +23,7 @@ services:
       Demo__Password2: ${Demo__Password2:-}
       Demo__StaffPassword: ${Demo__StaffPassword:-}
       DataProtection__Path: /keys
+      ReverseProxy__Address: ${PROXY_ADDRESS:-172.29.238.10}
     volumes:
       - keys:/keys
     depends_on:
@@ -46,7 +47,15 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [api]
+    networks:
+      default:
+        ipv4_address: ${PROXY_ADDRESS:-172.29.238.10}
     restart: unless-stopped
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${COMPOSE_SUBNET:-172.29.238.0/24}
 volumes:
   db:
   keys:

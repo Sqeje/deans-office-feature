@@ -1,28 +1,51 @@
 import { test, expect } from "@playwright/test";
 
-test('stale anonymous refresh cannot overwrite a completed login', async ({ page }) => {
+test("stale anonymous refresh cannot overwrite a completed login", async ({
+  page,
+}) => {
   const password = process.env.DEMO_PASSWORD1;
-  if (!password) throw new Error('Set DEMO_PASSWORD1');
+  if (!password) throw new Error("Set DEMO_PASSWORD1");
   let release!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   let first = true;
-  await page.route('**/api/identity/session', async route => {
-    if (!first) { await route.continue(); return; }
+  await page.route("**/api/identity/session", async (route) => {
+    if (!first) {
+      await route.continue();
+      return;
+    }
     first = false;
     await gate;
-    await route.fulfill({ status: 401, contentType: 'application/problem+json', body: '{"status":401,"code":"authentication_required"}' });
+    await route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: '{"status":401,"code":"authentication_required"}',
+    });
   });
-  await page.goto('/login');
-  await page.getByLabel('Электронная почта').fill('student1@demo.invalid');
-  await page.getByLabel('Пароль', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Здравствуйте, Алексей Примеров' })).toBeVisible();
-  const staleResponse = page.waitForResponse(r => r.url().endsWith('/api/identity/session') && r.status() === 401);
+  await page.goto("/login");
+  await page.getByLabel("Электронная почта").fill("student1@demo.invalid");
+  await page.getByLabel("Пароль", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Здравствуйте, Алексей Примеров" }),
+  ).toBeVisible();
+  const staleResponse = page.waitForResponse(
+    (r) => r.url().endsWith("/api/identity/session") && r.status() === 401,
+  );
   release();
   await staleResponse;
-  await expect(page.getByRole('heading', { name: 'Здравствуйте, Алексей Примеров' })).toBeVisible();
-  await page.route('**/api/identity/me', route => route.fulfill({ status: 401, contentType: 'application/problem+json', body: '{"status":401}' }));
-  await page.goto('/student/profile');
+  await expect(
+    page.getByRole("heading", { name: "Здравствуйте, Алексей Примеров" }),
+  ).toBeVisible();
+  await page.route("**/api/identity/me", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: '{"status":401}',
+    }),
+  );
+  await page.goto("/student/profile");
   await expect(page).toHaveURL(/login/);
 });
 
@@ -50,6 +73,7 @@ test("two student profiles, mobile navigation and logout", async ({
     await expect(
       page.getByRole("heading", { name: `Здравствуйте, ${name}` }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Меню профиля" }).click();
     await page.getByRole("link", { name: "Профиль", exact: true }).click();
     await expect(page.getByText(name, { exact: true })).toBeVisible();
     await page.reload();
@@ -75,7 +99,11 @@ test("two student profiles, mobile navigation and logout", async ({
     await expect(
       page.getByRole("heading", { name: "Расписание", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Выйти", exact: true }).click();
+    await page.getByRole("button", { name: "Меню профиля" }).click();
+    await page
+      .getByRole("button", { name: "Выйти", exact: true })
+      .filter({ visible: true })
+      .click();
     await expect(page).toHaveURL(/login/);
     await context.close();
   }
@@ -115,6 +143,10 @@ test("staff has a separate mobile workspace and applicants stay public", async (
     page.getByRole("heading", { name: "Нет доступа" }),
   ).toBeVisible();
   await page.goto("/staff");
-  await page.getByRole("button", { name: "Выйти", exact: true }).click();
+  await page.getByRole("button", { name: "Меню профиля" }).click();
+  await page
+    .getByRole("button", { name: "Выйти", exact: true })
+    .filter({ visible: true })
+    .click();
   await expect(page).toHaveURL(/login/);
 });

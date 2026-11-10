@@ -1,0 +1,33 @@
+# Isolated test stack. No host ports, host node_modules, or application data volumes.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dean
+      POSTGRES_DB: dean_test
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./tools/check/init.sql:/docker-entrypoint-initdb.d/01-check.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U dean -d dean_test']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  checks:
+    build:
+      context: .
+      dockerfile: tools/check/Dockerfile
+    environment:
+      TEST_DATABASE: Host=db;Database=dean_test;Username=dean;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Database: Host=db;Database=dean_app;Username=dean;Password=${POSTGRES_PASSWORD}
+      Demo__Enabled: 'true'
+      Demo__Password1: ${Demo__Password1:?}
+      Demo__Password2: ${Demo__Password2:?}
+      Demo__StaffPassword: ${Demo__StaffPassword:?}
+      ASPNETCORE_ENVIRONMENT: Development
+      DataProtection__Path: /tmp/dean-check-keys
+    shm_size: 1gb
+    volumes:
+      - ./artifacts/checks/${CHECK_RUN_ID:?}:/artifacts

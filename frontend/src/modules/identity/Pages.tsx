@@ -3,19 +3,7 @@ import { Navigate } from "react-router-dom";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
 import { Denied, EmptyState, ErrorState, Loading } from "../../shared/states";
-export function StudentHome() {
-  const { session } = useSession();
-  return (
-    <>
-      <p className="text-sm text-slate-500">ЛИЧНЫЙ КАБИНЕТ СТУДЕНТА</p>
-      <h1>Здравствуйте, {session?.displayName}</h1>
-      <EmptyState
-        title="Всё важное об учёбе — рядом"
-        text="Это фундамент демонстрационного приложения. Учебные разделы появятся в следующих срезах."
-      />
-    </>
-  );
-}
+export { StudentHome } from "./StudentHome";
 const permissionLabels: Record<string, string> = {
   "requests.manage": "Обработка обращений",
   "schedule.write": "Изменение расписания",
@@ -60,7 +48,8 @@ export function ProfilePage() {
   }, []);
   if (denied) return <Denied />;
   if (error) return <ErrorState />;
-  if (profile === null) return <Navigate to="/login" replace />;
+  if (profile === null)
+    return <Navigate to="/login" state={{ expired: true }} replace />;
   if (!profile) return <Loading />;
   return (
     <>

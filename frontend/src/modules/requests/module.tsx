@@ -4,7 +4,7 @@ import { EmptyState } from "../../shared/states";
 function StaffPage() {
   return (
     <>
-      <h1>Обращения</h1>
+      <h1>Заявки</h1>
       <EmptyState
         title="Раздел в разработке"
         text="Рабочие операции сотрудника будут добавлены отдельным срезом."
@@ -15,11 +15,11 @@ function StaffPage() {
 export const requestsModule: FrontendModule = {
   id: "requests",
   pages: [
-    { area: "student", path: "requests", title: "Обращения", Page },
+    { area: "student", path: "requests", title: "Заявки", Page },
     {
       area: "staff",
       path: "requests",
-      title: "Обращения",
+      title: "Заявки",
       Page: StaffPage,
       permission: "requests.manage",
     },

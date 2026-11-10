@@ -5,7 +5,7 @@
 3. `git switch main`, `git pull --ff-only`, `git switch -c feature/<module>-<scenario>`.
 4. Прочитайте docs/EXTENDING.md и docs/SLICES.md. Передайте своему Codex AGENTS.md и заполненный docs/SLICE_TEMPLATE.md. Попросите сначала изучить модуль, затем реализовать один сценарий с тестами. Не поручайте параллельно менять общую инфраструктуру.
 5. Разделение первой работы: участник 1 — Schedule; участник 2 — AcademicPerformance; участник 3 — Requests. Notifications — следующий срез. Identity остаётся общим контрактом; изменения согласовываются.
-6. Перед PR выполните `npm ci` и `npm run build` в frontend; `dotnet build backend/Dean.Api/Dean.Api.csproj`; `dotnet test backend/Dean.Api.Tests` с TEST_DATABASE на отдельную пустую PostgreSQL. Тест создаёт демо-аккаунты со случайными паролями, поэтому для повторного запуска нужна новая тестовая БД.
+6. Перед PR выполните `./dev.ps1 check` по [AUTOMATION.md](AUTOMATION.md). CI использует тот же сценарий. Если Docker недоступен, укажите ограничение и выполните локальные проверки: `npm run build` в frontend, `dotnet build backend/Dean.Api/Dean.Api.csproj`, `dotnet test backend/Dean.Api.Tests` с TEST_DATABASE на отдельную пустую PostgreSQL. `npm ci` нужен для отсутствующих/неполных зависимостей или изменённого lock-файла и выполняется с остановленным Vite. Тест создаёт демо-аккаунты со случайными паролями, поэтому для повторного запуска нужна новая тестовая БД.
 7. Проверьте 360 px, вход двумя аккаунтами, ошибки сети. Создайте PR в main, укажите общие изменения и приложите результаты проверок. Другой участник делает ревью. Объединяйте PR последовательно, после зелёного CI. Публикация/отправка Codex — только с разрешения человека.
 
 ## Миграции
