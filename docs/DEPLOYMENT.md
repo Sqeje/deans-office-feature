@@ -1,5 +1,7 @@
 # Linux
 
+HTTPS завершается в Caddy. API принимает `X-Forwarded-Proto` только от адреса `PROXY_ADDRESS` во внутренней сети Compose; без этого защищённая CSRF-cookie не выдаётся. API и PostgreSQL не публикуют порты на хост. При конфликте подсети с VPN задайте в `.env` согласованные `COMPOSE_SUBNET` и `PROXY_ADDRESS` (адрес Caddy внутри этой подсети), затем выполните остановку и повторный запуск без удаления томов. Не включайте доверие к forwarded-заголовкам от любых адресов.
+
 1. Подготовьте Linux VPS с Docker Engine и Compose plugin. Выберите хостинг с доступом из России. Создайте DNS A-запись домена на IP сервера; AAAA добавляйте только при рабочем IPv6.
 2. Разрешите входящие TCP 80/443 и SSH; PostgreSQL и API наружу не открывайте.
 3. Скопируйте репозиторий. `cp .env.example .env`; `chmod 600 .env`. Заполните уникальные пароли и `SITE_ADDRESS=dean.example.org`. Используйте URL-безопасные случайные пароли БД без `;`, чтобы не ломать connection string. Для демо нужны Demo__Password1, Demo__Password2 и Demo__StaffPassword длиной от 12, с верхним/нижним регистром, цифрами и символом.

@@ -1,0 +1,2 @@
+*.sh text eol=lf
+frontend/src/shared/schema.d.ts text eol=lf
