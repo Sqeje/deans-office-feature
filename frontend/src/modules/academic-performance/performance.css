@@ -891,3 +891,16 @@
     padding: 20px;
   }
 }
+.academic-next-exam {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.academic-next-exam h3 {
+  font-weight: 600;
+}
+.academic-next-exam a {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}

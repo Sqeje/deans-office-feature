@@ -4,6 +4,7 @@ import { loadPerformance, loadSemesters } from "./api";
 import { RequestFailure, useRemote } from "./remote";
 import { SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
+import { formatDate } from "./model";
 import "./performance.css";
 
 export function AcademicSummary() {
@@ -123,6 +124,10 @@ export function AcademicSummary() {
                       </dd>
                     </div>
                     <div>
+                      <dt>Зачёты</dt>
+                      <dd>{summary.credits}</dd>
+                    </div>
+                    <div>
                       <dt>Средний балл</dt>
                       <dd>
                         {summary.average === null
@@ -139,6 +144,30 @@ export function AcademicSummary() {
                   </dl>
                 </div>
               )}
+              <div className="academic-next-exam">
+                <h3>Ближайший экзамен</h3>
+                {summary.nextExam ? (
+                  <Link
+                    to={
+                      "/student/academic-performance?" +
+                      new URLSearchParams({
+                        semester: semesterId,
+                        discipline: summary.nextExam.courseId,
+                      })
+                    }
+                    aria-label={
+                      "Открыть ближайший экзамен: " + summary.nextExam.name
+                    }
+                  >
+                    <strong>{summary.nextExam.name}</strong>
+                    <time dateTime={summary.nextExam.date}>
+                      {formatDate(summary.nextExam.date)}
+                    </time>
+                  </Link>
+                ) : (
+                  <p className="muted">Предстоящих экзаменов пока нет.</p>
+                )}
+              </div>
               <Link
                 className="academic-all-link"
                 to={

@@ -29,15 +29,18 @@ export interface Semester {
   id: string;
   label: string;
 }
+export interface PerformanceSummary {
+  total: number;
+  passed: number;
+  debts: number;
+  average: number | null;
+  credits: number;
+  nextExam: { courseId: string; name: string; date: string } | null;
+}
 export interface SemesterPerformance {
   semesterId: string;
   disciplines: readonly Discipline[];
-  summary?: {
-    total: number;
-    passed: number;
-    debts: number;
-    average: number | null;
-  };
+  summary?: PerformanceSummary;
 }
 export interface SemesterCatalog {
   semesters: readonly Semester[];

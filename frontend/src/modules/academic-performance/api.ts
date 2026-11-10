@@ -28,6 +28,8 @@ function adapt(data: Performance): SemesterPerformance {
       debts: Number(data.summary.debts),
       average:
         data.summary.average === null ? null : Number(data.summary.average),
+      credits: Number(data.summary.credits),
+      nextExam: data.summary.nextExam,
     },
     disciplines: data.disciplines.map((d) => {
       const final: FinalResult =

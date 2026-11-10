@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Dean.Api.Modules.AcademicPerformance;
 
-public sealed class PerformanceReader(AppDbContext db)
+public sealed class PerformanceReader(AppDbContext db, TimeProvider clock)
 {
+    // Project default until the university provides its own academic time zone.
+    private static readonly TimeZoneInfo UniversityTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Moscow");
     public async Task<PerformanceResponse?> Read(Guid universityId, string studentId, Guid groupId, string semesterId, CancellationToken ct)
     {
         if (!await db.Set<AcademicSemester>().AnyAsync(x => x.UniversityId == universityId && x.Id == semesterId, ct)) return null;
@@ -27,9 +29,7 @@ public sealed class PerformanceReader(AppDbContext db)
                 status == ResultStatus.Debt ? "Итоговый результат неудовлетворительный. Требуется пересдача." : null,
                 result?.SourceId is null);
         }).ToArray();
-        var numbers = disciplines.Where(x => x.Final?.Kind == FinalKind.Grade).Select(x => (decimal)x.Final!.Value!.Value).ToArray();
-        return new(semesterId, disciplines, new(disciplines.Length,
-            disciplines.Count(x => x.Status == ResultStatus.Passed), disciplines.Count(x => x.Status == ResultStatus.Debt),
-            numbers.Length == 0 ? null : numbers.Average()));
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), UniversityTimeZone).DateTime);
+        return new(semesterId, disciplines, PerformanceSummaryCalculator.Calculate(disciplines, today));
     }
 }

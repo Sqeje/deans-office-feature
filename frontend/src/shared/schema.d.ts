@@ -561,6 +561,13 @@ export interface components {
             email: string;
             password: string;
         };
+        NextExamDto: {
+            /** Format: uuid */
+            courseId: string;
+            name: string;
+            /** Format: date */
+            date: string;
+        };
         PerformanceResponse: {
             semesterId: string;
             disciplines: components["schemas"]["DisciplineDto"][];
@@ -575,6 +582,9 @@ export interface components {
             debts: number | string;
             /** Format: double */
             average: null | number | string;
+            /** Format: int32 */
+            credits: number | string;
+            nextExam: null | components["schemas"]["NextExamDto"];
         };
         /** @enum {unknown} */
         PermissionCode: "requests.manage" | "schedule.write" | "grades.write" | "announcements.publish" | "sources.manage";

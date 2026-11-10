@@ -59,6 +59,25 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
     await expect(second.locator(".performance-summary-values")).toContainText(
       "2 из 4",
     );
+    await expect(
+      first
+        .locator(".performance-summary-values div")
+        .filter({ hasText: "Зачёты" }),
+    ).toHaveText("Зачёты1");
+    await first
+      .getByRole("link", {
+        name: "Открыть ближайший экзамен: Программирование",
+        exact: true,
+      })
+      .click();
+    await expect(first.getByRole("heading", { level: 1 })).toHaveText(
+      "Программирование",
+    );
+    await expect(
+      first.getByText("20 января 2027 г.", { exact: true }),
+    ).toBeVisible();
+    await first.goto("/student");
+    await expect(first.locator(".performance-summary-values")).toBeVisible();
     await staff.goto("/staff/academic-performance");
     await staff
       .getByLabel("Группа", { exact: true })
@@ -109,6 +128,33 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
     await expect(first.locator(".performance-summary-values")).toContainText(
       "2 из 4",
     );
+    await first
+      .getByLabel("Семестр", { exact: true })
+      .selectOption("2026-spring");
+    await expect(
+      first.getByText("Предстоящих экзаменов пока нет."),
+    ).toBeVisible();
+    await expect(
+      first
+        .locator(".performance-summary-values div")
+        .filter({ hasText: "Зачёты" }),
+    ).toHaveText("Зачёты1");
+    await first
+      .getByRole("link", { name: "Открыть успеваемость", exact: true })
+      .click();
+    await expect(first.getByLabel("Семестр", { exact: true })).toHaveValue(
+      "2026-spring",
+    );
+    await expect(
+      first.locator(".academic-stat").filter({ hasText: "Зачёты" }),
+    ).toContainText("1");
+    await first.goto("/student?semester=2026-autumn");
+    await expect(
+      first.getByRole("link", {
+        name: "Открыть ближайший экзамен: Программирование",
+        exact: true,
+      }),
+    ).toBeVisible();
     for (const width of [360, 390, 768, 1024, 1280, 1440]) {
       for (const [page, name] of [
         [first, "home"],
@@ -354,7 +400,14 @@ test("home does not invent a numerical average when there are no finals", async 
       json: {
         semesterId: "2026-autumn",
         disciplines: [],
-        summary: { total: 1, passed: 0, debts: 0, average: null },
+        summary: {
+          total: 1,
+          passed: 0,
+          debts: 0,
+          average: null,
+          credits: 0,
+          nextExam: null,
+        },
       },
     }),
   );
@@ -364,4 +417,5 @@ test("home does not invent a numerical average when there are no finals", async 
   ).toBeVisible();
   await expect(page.locator(".performance-average-ring")).toHaveCount(0);
   await expect(page.getByText("Стипендия", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Предстоящих экзаменов пока нет.")).toBeVisible();
 });

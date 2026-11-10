@@ -12,7 +12,11 @@ namespace Dean.Api.Modules.AcademicPerformance;
 public sealed class AcademicPerformanceModule : IAppModule
 {
     public string Id => "academic-performance";
-    public void AddServices(IServiceCollection services, IConfiguration config) => services.AddScoped<PerformanceReader>();
+    public void AddServices(IServiceCollection services, IConfiguration config)
+    {
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<PerformanceReader>();
+    }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {

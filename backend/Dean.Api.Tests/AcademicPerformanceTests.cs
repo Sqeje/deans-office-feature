@@ -39,6 +39,9 @@ public sealed class AcademicPerformanceTests
         Assert.Equal(5, other.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
         Assert.Equal(2m, before.Summary.Average);
         Assert.Equal(1, before.Summary.Debts);
+        Assert.Equal(1, before.Summary.Credits);
+        Assert.Equal(Guid.Parse("60000000-0000-0000-0000-000000000002"), before.Summary.NextExam!.CourseId);
+        Assert.Equal(new DateOnly(2027, 1, 20), before.Summary.NextExam.Date);
         Assert.Equal(5m, other.Summary.Average);
         var forged = (await first.GetFromJsonAsync<PerformanceResponse>(StudentUrl + $"&studentId={secondProfile.Id}&universityId={Guid.NewGuid()}"))!;
         Assert.Equal(2, forged.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
@@ -50,6 +53,8 @@ public sealed class AcademicPerformanceTests
         var empty = (await first.GetFromJsonAsync<PerformanceResponse>("/api/academic-performance/student?semesterId=2027-spring"))!;
         Assert.Empty(empty.Disciplines);
         Assert.Null(empty.Summary.Average);
+        Assert.Equal(0, empty.Summary.Credits);
+        Assert.Null(empty.Summary.NextExam);
         Assert.Equal(HttpStatusCode.NotFound, (await first.GetAsync("/api/academic-performance/student?semesterId=missing")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await staff.GetAsync(StaffUrl + "/students/missing?semesterId=2026-autumn")).StatusCode);
         var groups = (await staff.GetFromJsonAsync<DirectoryGroup[]>(StaffUrl + "/groups"))!;
@@ -154,6 +159,7 @@ public sealed class AcademicPerformanceTests
         Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.FailedCredit, null))).StatusCode);
         var responseData = (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         Assert.Equal(2, responseData.Summary.Debts);
+        Assert.Equal(0, responseData.Summary.Credits);
         Assert.Equal(2m, responseData.Summary.Average); // Credits never enter the numerical average.
         using (var scope = env.Factory.Services.CreateScope())
         {
@@ -231,6 +237,11 @@ public sealed class AcademicPerformanceTests
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token.Token);
     }
 
+    private sealed class TestClock : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(2026, 11, 10, 12, 0, 0, TimeSpan.Zero);
+    }
+
     private sealed class TestApp : IAsyncDisposable
     {
         private readonly string name = "slice6_test_" + Guid.NewGuid().ToString("N");
@@ -262,7 +273,8 @@ public sealed class AcademicPerformanceTests
             try
             {
                 result.Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b.UseEnvironment("Development")
-                    .ConfigureAppConfiguration((_, c) => c.AddConfiguration(result.Config)));
+                    .ConfigureAppConfiguration((_, c) => c.AddConfiguration(result.Config))
+                    .ConfigureServices(s => s.AddSingleton<TimeProvider>(new TestClock())));
                 await DemoSeed.Run(result.Factory.Services, result.Config);
                 return result;
             }

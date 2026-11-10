@@ -72,6 +72,7 @@ public sealed record CurrentGradeDto(Guid Id, DateOnly Date, string Activity, in
 public sealed record FinalDto(FinalKind Kind, int? Value);
 public sealed record DisciplineDto(Guid Id, string Name, string? Teacher, AssessmentKind Assessment,
     DateOnly? AssessmentDate, CurrentGradeDto[] Grades, FinalDto? Final, ResultStatus Status, string? DebtReason, bool IsLocal);
-public sealed record PerformanceSummary(int Total, int Passed, int Debts, decimal? Average);
+public sealed record NextExamDto(Guid CourseId, string Name, DateOnly Date);
+public sealed record PerformanceSummary(int Total, int Passed, int Debts, decimal? Average, int Credits, NextExamDto? NextExam);
 public sealed record PerformanceResponse(string SemesterId, DisciplineDto[] Disciplines, PerformanceSummary Summary);
 public sealed record SaveResultRequest(FinalKind Kind, int? Value);

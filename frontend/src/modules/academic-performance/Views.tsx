@@ -61,16 +61,13 @@ export function Overview({
   allHref,
 }: {
   disciplines: readonly Discipline[];
-  summary?: {
-    total: number;
-    passed: number;
-    debts: number;
-    average: number | null;
-  };
+  summary?: import("./model").PerformanceSummary;
   href: (id: string) => string;
   allHref: string;
 }) {
-  const credits = disciplines.filter((d) => d.final?.kind === "credit").length;
+  const credits =
+    summary?.credits ??
+    disciplines.filter((d) => d.final?.kind === "credit").length;
   const stats = [
     ["layers", "Дисциплины", summary?.total ?? disciplines.length],
     ["check", "Зачёты", credits],
