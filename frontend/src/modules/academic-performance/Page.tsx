@@ -5,12 +5,11 @@ import { SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
 import { defaultSemesterId, loadDemoPerformance, semesters } from "./demo";
 import { Overview, AllResults } from "./Views";
+import { DisciplinePage } from "./DisciplinePage";
 import { finalLabel, formatDate, type Discipline, type PerformanceLoader, type SemesterPerformance } from "./model";
 import "./performance.css";
 
-function Details({discipline:d}:{discipline:Discipline}) {
- return <section className="academic-panel"><h2>{d.name}</h2><p>Итог: {finalLabel(d.final)}</p>{d.grades.map(g=><p key={g.id}>{g.activity} · {formatDate(g.date)} · {g.value}</p>)}<p>{d.debt?.reason??"Задолженности нет"}</p><p>{d.examDate?formatDate(d.examDate):"Экзамен не предусмотрен"}</p></section>;
-}
+const Details = DisciplinePage;
 type State={semester:string;attempt:number;status:"loading"|"error"|"success";data?:SemesterPerformance};
 export function Page({loader=loadDemoPerformance}:{loader?:PerformanceLoader}) {
  const [params,setParams]=useSearchParams();
