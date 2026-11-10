@@ -20,4 +20,10 @@ export function Overview({disciplines,href}:{disciplines:readonly Discipline[];h
  {!disciplines.some(d=>d.examDate&&d.status==="pending")&&<p className="muted">Даты сессии пока не назначены.</p>}
  </section></div></>;
 }
+export function AllResults({disciplines,href,filter,onFilter}:{disciplines:readonly Discipline[];href:(id:string)=>string;filter:string;onFilter:(value:string)=>void}) {
+ const shown=disciplines.filter(d=>filter==="all"||d.status===filter);
+ return <><label className="academic-result-filter"><span className="sr-only">Фильтр результатов</span><select value={filter} onChange={e=>onFilter(e.target.value)}><option value="all">Все результаты</option><option value="passed">Сдано</option><option value="pending">Не выставлены</option><option value="debt">Задолженности</option></select></label>
+ <section className="academic-panel academic-results"><ResultsTable disciplines={shown} href={href}/>{!shown.length&&<p className="muted">Нет результатов с таким статусом.</p>}</section>
+ <p className="academic-results-summary">{disciplines.length} дисциплины · {disciplines.filter(d=>d.final?.kind==="credit").length} зачёт · {disciplines.filter(d=>d.debt).length} задолженность</p></>;
+}
 
