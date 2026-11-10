@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { mockPerformance } from "./performance-http";
 
 test("existing login, profile, navigation and logout with mocked HTTP", async ({
   page,
 }) => {
   let loggedIn = false;
+  await mockPerformance(page);
   const name = "Александр Константинович Демонстрационный-Примеров";
   const session = {
     userId: "demo",
@@ -75,9 +77,13 @@ test("existing login, profile, navigation and logout with mocked HTTP", async ({
   await expect(page).toHaveURL(/login/);
 });
 
-test("staff workspace retains its permissions and placeholder", async ({
+test("staff workspace retains its permissions and shows empty assigned groups", async ({
   page,
 }) => {
+  await mockPerformance(page);
+  await page.route("**/api/academic-performance/staff/groups", (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route("**/api/identity/session", (route) =>
     route.fulfill({
       json: {
@@ -101,11 +107,7 @@ test("staff workspace retains its permissions and placeholder", async ({
     page.getByRole("heading", { name: "Здравствуйте, Сотрудник Примеров" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Успеваемость", exact: true }).click();
-  await expect(
-    page.getByText(
-      "Рабочие операции сотрудника будут добавлены отдельным срезом.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByText("Группы пока не назначены")).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole("combobox", { name: "Семестр" })).toHaveCount(0);
   expect(

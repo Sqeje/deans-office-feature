@@ -3,16 +3,13 @@ import { Navigate } from "react-router-dom";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
 import { Denied, EmptyState, ErrorState, Loading } from "../../shared/states";
+import { AcademicSummary } from "../academic-performance/Summary";
 export function StudentHome() {
   const { session } = useSession();
   return (
     <>
-      <p className="text-sm text-slate-500">ЛИЧНЫЙ КАБИНЕТ СТУДЕНТА</p>
       <h1>Здравствуйте, {session?.displayName}</h1>
-      <EmptyState
-        title="Всё важное об учёбе — рядом"
-        text="Это фундамент демонстрационного приложения. Учебные разделы появятся в следующих срезах."
-      />
+      <AcademicSummary />
     </>
   );
 }

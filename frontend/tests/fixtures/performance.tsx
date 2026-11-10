@@ -2,13 +2,18 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Page } from "../../src/modules/academic-performance/Page";
-import { loadDemoPerformance } from "../../src/modules/academic-performance/demo";
+import {
+  loadDemoPerformance,
+  semesters,
+  defaultSemesterId,
+} from "../../src/modules/academic-performance/demo";
 import type { PerformanceLoader } from "../../src/modules/academic-performance/model";
 import "../../src/style.css";
 import { PerformanceShell } from "../../src/modules/academic-performance/PerformanceShell";
 import { modulePages } from "../../src/modules/sections";
 const mode = new URLSearchParams(location.search).get("mode");
 let calls = 0;
+const catalogLoader = async () => ({ semesters, defaultSemesterId });
 const loader: PerformanceLoader = async (id, signal) => {
   const call = ++calls;
   if (mode === "retry" && call === 1) throw new Error("Simulated test error");
@@ -39,7 +44,7 @@ createRoot(document.getElementById("root")!).render(
       name="Александр"
       onLogout={() => location.assign("/login")}
     >
-      <Page loader={loader} />
+      <Page loader={loader} catalogLoader={catalogLoader} demonstration />
     </PerformanceShell>
   </BrowserRouter>,
 );

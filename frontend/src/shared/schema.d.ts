@@ -200,16 +200,381 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/academic-performance/semesters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SemestersResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/student": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    semesterId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PerformanceResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DirectoryGroup"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/groups/{groupId}/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    groupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DirectoryStudent"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/students/{studentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    semesterId: string;
+                };
+                header?: never;
+                path: {
+                    studentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PerformanceResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/students/{studentId}/courses/{courseId}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    studentId: string;
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveResultRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {unknown} */
+        AssessmentKind: "exam" | "credit";
         CsrfResponse: {
             token: string;
         };
+        CurrentGradeDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            date: string;
+            activity: string;
+            /** Format: int32 */
+            value: number | string;
+        };
+        DirectoryGroup: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        DirectoryStudent: {
+            id: string;
+            name: string;
+            /** Format: uuid */
+            groupId: string;
+        };
+        DisciplineDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            teacher: null | string;
+            assessment: components["schemas"]["AssessmentKind"];
+            /** Format: date */
+            assessmentDate: null | string;
+            grades: components["schemas"]["CurrentGradeDto"][];
+            final: null | components["schemas"]["FinalDto"];
+            status: components["schemas"]["ResultStatus"];
+            debtReason: null | string;
+            isLocal: boolean;
+        };
+        FinalDto: {
+            kind: components["schemas"]["FinalKind"];
+            /** Format: int32 */
+            value: null | number | string;
+        };
+        /** @enum {unknown} */
+        FinalKind: "pending" | "grade" | "credit" | "failed-credit";
         LoginRequest: {
             email: string;
             password: string;
+        };
+        PerformanceResponse: {
+            semesterId: string;
+            disciplines: components["schemas"]["DisciplineDto"][];
+            summary: components["schemas"]["PerformanceSummary"];
+        };
+        PerformanceSummary: {
+            /** Format: int32 */
+            total: number | string;
+            /** Format: int32 */
+            passed: number | string;
+            /** Format: int32 */
+            debts: number | string;
+            /** Format: double */
+            average: null | number | string;
         };
         /** @enum {unknown} */
         PermissionCode: "requests.manage" | "schedule.write" | "grades.write" | "announcements.publish" | "sources.manage";
@@ -226,6 +591,21 @@ export interface components {
             universityId: string;
             university: string;
             group: string;
+        };
+        /** @enum {unknown} */
+        ResultStatus: "pending" | "passed" | "debt";
+        SaveResultRequest: {
+            kind: components["schemas"]["FinalKind"];
+            /** Format: int32 */
+            value: null | number | string;
+        };
+        SemesterDto: {
+            id: string;
+            label: string;
+        };
+        SemestersResponse: {
+            semesters: components["schemas"]["SemesterDto"][];
+            defaultSemesterId: null | string;
         };
         SessionResponse: {
             userId: string;

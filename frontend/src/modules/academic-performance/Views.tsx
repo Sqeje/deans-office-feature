@@ -56,18 +56,29 @@ export function ResultsTable({
 }
 export function Overview({
   disciplines,
+  summary,
   href,
   allHref,
 }: {
   disciplines: readonly Discipline[];
+  summary?: {
+    total: number;
+    passed: number;
+    debts: number;
+    average: number | null;
+  };
   href: (id: string) => string;
   allHref: string;
 }) {
   const credits = disciplines.filter((d) => d.final?.kind === "credit").length;
   const stats = [
-    ["layers", "Дисциплины", disciplines.length],
+    ["layers", "Дисциплины", summary?.total ?? disciplines.length],
     ["check", "Зачёты", credits],
-    ["alert", "Задолженности", disciplines.filter((d) => d.debt).length],
+    [
+      "alert",
+      "Задолженности",
+      summary?.debts ?? disciplines.filter((d) => d.debt).length,
+    ],
   ];
   return (
     <>
@@ -84,6 +95,16 @@ export function Overview({
           </div>
         ))}
       </div>
+      {summary && (
+        <p className="academic-results-summary">
+          Сдано дисциплин: {summary.passed} · Средний балл:{" "}
+          {summary.average === null
+            ? "Оценок пока нет"
+            : new Intl.NumberFormat("ru-RU", {
+                maximumFractionDigits: 2,
+              }).format(summary.average)}
+        </p>
+      )}
       <div className="academic-overview-grid">
         <section className="academic-panel">
           <h2>Дисциплины</h2>
