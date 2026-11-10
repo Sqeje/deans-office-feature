@@ -11,8 +11,8 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
     semesterId: "2026-autumn",
     disciplines: [
       {
-        id: "international-law",
-        name: "Международное право",
+        id: "networks",
+        name: "Компьютерные сети",
         assessment: "exam",
         grades: [
           { id: "law-essay", date: "2026-10-12", activity: "Эссе", value: 4 },
@@ -32,9 +32,10 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
         examDate: "2027-01-18",
       },
       {
-        id: "economics",
-        name: "Экономическая теория",
-        assessment: "exam",
+        id: "databases",
+        name: "Базы данных",
+        teacher: "Елена Орлова",
+        assessment: "credit",
         grades: [
           {
             id: "economics-test",
@@ -43,14 +44,14 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
             value: 5,
           },
         ],
-        final: { kind: "grade", value: 5 },
+        final: { kind: "credit" },
         status: "passed",
         debt: null,
-        examDate: "2027-01-12",
+        examDate: null,
       },
       {
-        id: "foreign-language",
-        name: "Иностранный язык в профессиональной деятельности и международной коммуникации",
+        id: "english",
+        name: "Английский язык",
         assessment: "credit",
         grades: [
           {
@@ -60,20 +61,21 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
             value: 4,
           },
         ],
-        final: { kind: "credit" },
-        status: "passed",
+        final: null,
+        status: "pending",
         debt: null,
         examDate: null,
+        assessmentDate: "2027-01-25",
       },
       {
-        id: "statistics",
-        name: "Статистика",
+        id: "programming",
+        name: "Программирование",
         assessment: "exam",
         grades: [],
         final: null,
         status: "pending",
         debt: null,
-        examDate: "2027-01-25",
+        examDate: "2027-01-20",
       },
     ],
   },

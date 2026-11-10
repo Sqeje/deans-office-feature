@@ -12,6 +12,8 @@ export interface CurrentGrade {
   value: Grade;
 }
 export interface Discipline {
+  teacher?: string;
+  assessmentDate?: string;
   id: string;
   name: string;
   assessment: "exam" | "credit";
