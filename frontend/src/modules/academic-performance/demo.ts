@@ -11,11 +11,58 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
     semesterId: "2026-autumn",
     disciplines: [
       {
+        id: "databases",
+        name: "Базы данных",
+        teacher: "Елена Орлова",
+        assessment: "credit",
+        grades: [
+          {
+            id: "db-control",
+            date: "2026-10-10",
+            activity: "Контрольная работа",
+            value: 5,
+          },
+          {
+            id: "db-practice",
+            date: "2026-10-24",
+            activity: "Практическая работа",
+            value: 4,
+          },
+          {
+            id: "db-answer",
+            date: "2026-11-07",
+            activity: "Ответ на занятии",
+            value: 5,
+          },
+        ],
+        final: {
+          kind: "credit",
+        },
+        status: "passed",
+        debt: null,
+        examDate: null,
+      },
+      {
+        id: "programming",
+        name: "Программирование",
+        assessment: "exam",
+        grades: [],
+        final: null,
+        status: "pending",
+        debt: null,
+        examDate: "2027-01-20",
+      },
+      {
         id: "networks",
         name: "Компьютерные сети",
         assessment: "exam",
         grades: [
-          { id: "law-essay", date: "2026-10-12", activity: "Эссе", value: 4 },
+          {
+            id: "law-essay",
+            date: "2026-10-12",
+            activity: "Эссе",
+            value: 4,
+          },
           {
             id: "law-test",
             date: "2026-10-26",
@@ -23,31 +70,16 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
             value: 5,
           },
         ],
-        final: { kind: "grade", value: 2 },
+        final: {
+          kind: "grade",
+          value: 2,
+        },
         status: "debt",
         debt: {
           reason:
             "Итоговый результат неудовлетворительный. Требуется пересдача.",
         },
         examDate: "2027-01-18",
-      },
-      {
-        id: "databases",
-        name: "Базы данных",
-        teacher: "Елена Орлова",
-        assessment: "credit",
-        grades: [
-          {
-            id: "economics-test",
-            date: "2026-10-20",
-            activity: "Контрольная работа",
-            value: 5,
-          },
-        ],
-        final: { kind: "credit" },
-        status: "passed",
-        debt: null,
-        examDate: null,
       },
       {
         id: "english",
@@ -67,16 +99,6 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
         examDate: null,
         assessmentDate: "2027-01-25",
       },
-      {
-        id: "programming",
-        name: "Программирование",
-        assessment: "exam",
-        grades: [],
-        final: null,
-        status: "pending",
-        debt: null,
-        examDate: "2027-01-20",
-      },
     ],
   },
   "2026-spring": {
@@ -94,7 +116,10 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
             value: 4,
           },
         ],
-        final: { kind: "grade", value: 4 },
+        final: {
+          kind: "grade",
+          value: 4,
+        },
         status: "passed",
         debt: null,
         examDate: "2026-06-16",
@@ -104,14 +129,19 @@ export const demoPerformance: Readonly<Record<string, SemesterPerformance>> = {
         name: "Методы научных исследований",
         assessment: "credit",
         grades: [],
-        final: { kind: "credit" },
+        final: {
+          kind: "credit",
+        },
         status: "passed",
         debt: null,
         examDate: null,
       },
     ],
   },
-  "2027-spring": { semesterId: "2027-spring", disciplines: [] },
+  "2027-spring": {
+    semesterId: "2027-spring",
+    disciplines: [],
+  },
 };
 export const loadDemoPerformance: PerformanceLoader = async (
   semesterId,

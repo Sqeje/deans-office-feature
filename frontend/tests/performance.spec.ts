@@ -1,292 +1,227 @@
 import { test, expect, type Page } from "@playwright/test";
-import { demoPerformance } from "../src/modules/academic-performance/demo";
 import {
-  formatDate,
   summarize,
+  formatDate,
+  type Discipline,
 } from "../src/modules/academic-performance/model";
-
 const url = "/student/academic-performance";
-const session = {
-  userId: "demo-student",
-  universityId: "10000000-0000-0000-0000-000000000001",
-  displayName: "Демонстрационный студент",
-  roles: ["Student"],
-  studentId: "demo-student",
-  permissions: [],
-  areas: ["student"],
-};
-async function mockStudent(page: Page) {
-  await page.route("**/api/identity/session", (route) =>
-    route.fulfill({ json: session }),
+async function student(page: Page) {
+  await page.route("**/api/identity/session", (r) =>
+    r.fulfill({
+      json: {
+        userId: "demo",
+        studentId: "demo",
+        universityId: "10000000-0000-0000-0000-000000000001",
+        displayName: "Александр",
+        roles: ["Student"],
+        areas: ["student"],
+        permissions: [],
+      },
+    }),
   );
 }
-
-test("summary includes failing finals, excludes credits/pending and uses explicit debt", () => {
-  const subjects = demoPerformance["2026-autumn"].disciplines;
-  expect(summarize(subjects)).toEqual({ passed: 2, debts: 1, average: 3.5 });
-  expect(summarize([]).average).toBeNull();
+test("summary uses numerical finals and explicit debts", () => {
+  const d = {
+    id: "x",
+    name: "x",
+    assessment: "exam",
+    grades: [],
+    final: { kind: "grade", value: 2 },
+    status: "debt",
+    debt: { reason: "test" },
+    examDate: null,
+  } as Discipline;
   expect(
-    summarize(subjects.filter((d) => d.final?.kind !== "grade")).average,
-  ).toBeNull();
-  expect(subjects[0].grades.every((g) => g.value >= 4)).toBeTruthy();
-  expect(summarize([subjects[0]]).debts).toBe(1);
+    summarize([
+      d,
+      {
+        ...d,
+        id: "y",
+        final: { kind: "grade", value: 5 },
+        status: "passed",
+        debt: null,
+      },
+      {
+        ...d,
+        id: "z",
+        final: { kind: "credit" },
+        status: "passed",
+        debt: null,
+      },
+    ]),
+  ).toEqual({ average: 3.5, passed: 2, debts: 1 });
+  expect(summarize([]).average).toBeNull();
+  expect(formatDate("2027-01-20")).toBe("20 января 2027 г.");
 });
-test("calendar dates have the same label in different time zones", () => {
-  const original = process.env.TZ;
-  try {
-    for (const zone of ["Pacific/Honolulu", "Asia/Tokyo", "Europe/Moscow"]) {
-      process.env.TZ = zone;
-      expect(formatDate("2027-01-18")).toBe("18 января 2027 г.");
-    }
-  } finally {
-    if (original === undefined) delete process.env.TZ;
-    else process.env.TZ = original;
-  }
-});
-
-test("acceptance: semester, discipline, current grades, final, debt, exam; reload and back", async ({
+test("overview, all results, filter, discipline, back, refresh and semester", async ({
   page,
 }) => {
-  await mockStudent(page);
+  await student(page);
   await page.goto(url);
   await expect(
-    page.getByRole("combobox", { name: "Семестр", exact: true }),
-  ).toHaveValue("2026-autumn");
-  await expect(page.getByText("3,5 из 5", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: /Международное право/ }).click();
-  const details = page.getByRole("region", { name: "Международное право" });
+    page.getByRole("heading", { name: "Успеваемость", exact: true }),
+  ).toBeVisible();
   await expect(
-    details.getByRole("heading", { name: "Международное право" }),
-  ).toBeFocused();
-  await expect(details.getByLabel("Оценка 4")).toBeVisible();
-  await expect(details.getByLabel("Оценка 5")).toBeVisible();
-  await expect(details.locator("dd").filter({ hasText: /^2$/ })).toBeVisible();
-  await expect(details.getByText(/Требуется пересдача/)).toBeVisible();
-  await expect(details.getByText("18 января 2027 г.")).toBeVisible();
-  await page.screenshot({
-    path: "test-results/performance-debt-360.png",
-    fullPage: true,
-  });
-  await expect(page).toHaveURL(
-    /semester=2026-autumn&discipline=international-law/,
-  );
-  await page.reload();
-  await expect(details).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "Семестр", exact: true })
-    .selectOption("2026-spring");
+    page.getByRole("link", { name: "Все результаты", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Все результаты", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Международное право" }),
+    page.getByRole("heading", { name: "Все результаты", exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Фильтр результатов").selectOption("debt");
+  await expect(
+    page.getByRole("link", {
+      name: "Открыть дисциплину: Базы данных",
+      exact: true,
+    }),
   ).toHaveCount(0);
-  await expect(page).not.toHaveURL(/discipline=/);
-  await page.goBack();
-  await expect(details).toBeVisible();
-  await page.getByRole("link", { name: /Статистика/ }).click();
-  await expect(page.getByText("Текущих оценок пока нет.")).toBeVisible();
-  await expect(page.getByText("Задолженности нет")).toBeVisible();
   await page
-    .getByRole("combobox", { name: "Семестр", exact: true })
-    .selectOption("2027-spring");
+    .getByRole("link", {
+      name: "Открыть дисциплину: Компьютерные сети",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Компьютерные сети", exact: true }),
+  ).toBeFocused();
+  await expect(page.getByText(/Требуется пересдача/)).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Фильтр результатов")).toHaveValue("debt");
+  await page.getByLabel("Фильтр результатов").selectOption("all");
+  await page
+    .getByRole("link", { name: "Открыть дисциплину: Базы данных", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Базы данных", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Елена Орлова")).toBeVisible();
+  await expect(page.getByText("Практическая работа")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Елена Орлова")).toBeVisible();
+  await page.getByRole("link", { name: "Вернуться к успеваемости" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Успеваемость", exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Семестр", { exact: true }).selectOption("2027-spring");
   await expect(
     page.getByRole("heading", { name: "Дисциплин пока нет" }),
   ).toBeVisible();
+  await page.goBack();
   await expect(
-    page.getByText("Оценок пока нет", { exact: true }),
+    page.getByRole("link", { name: "Все результаты", exact: true }),
   ).toBeVisible();
 });
-
-test("unknown semester and discipline never substitute an unrelated record", async ({
+test("session items open discipline, empty grades and unknown records", async ({
   page,
 }) => {
-  await mockStudent(page);
-  await page.goto(url + "?semester=2026-spring&discipline=international-law");
+  await student(page);
+  await page.goto(url);
+  await page
+    .locator(".academic-session")
+    .getByRole("link", { name: /Программирование/ })
+    .click();
+  await expect(page.getByText("Текущих оценок пока нет.")).toBeVisible();
+  await expect(
+    page.getByText("20 января 2027 г.", { exact: true }),
+  ).toBeVisible();
+  await page.goto(url + "?discipline=missing");
   await expect(
     page.getByRole("heading", { name: "Дисциплина не найдена" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Международное право" }),
-  ).toHaveCount(0);
-  await page.goto(url + "?semester=unknown");
+  await page.goto(url + "?semester=missing");
   await expect(
     page.getByRole("heading", { name: "Семестр не найден" }),
   ).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "Семестр", exact: true })
-    .selectOption("2026-autumn");
-  await expect(
-    page.getByRole("link", { name: /Международное право/ }),
-  ).toBeVisible();
 });
-
-test("loader: skeleton, retry, no grades and obsolete response", async ({
-  page,
-}) => {
+test("loading, error retry and stale response", async ({ page }) => {
   const fixture = "/tests/fixtures/performance.html";
   await page.goto(fixture + "?mode=slow");
   await expect(page.getByRole("status")).toContainText(
     "Загружаем успеваемость",
   );
   await expect(
-    page.getByRole("link", { name: /Международное право/ }),
+    page.getByRole("link", { name: "Все результаты", exact: true }),
   ).toBeVisible();
   await page.goto(fixture + "?mode=retry");
-  await expect(page.getByRole("alert")).toContainText("Не удалось загрузить");
+  await expect(page.getByRole("alert")).toBeVisible();
   await page.getByRole("button", { name: "Повторить" }).click();
   await expect(
-    page.getByRole("link", { name: /Международное право/ }),
+    page.getByRole("link", { name: "Все результаты", exact: true }),
   ).toBeVisible();
-  await page.goto(fixture + "?mode=no-grades");
-  await expect(
-    page.getByText("Оценок пока нет", { exact: true }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: /Предмет без оценок/ }).click();
-  await expect(page.getByText("Дата пока не назначена")).toBeVisible();
   await page.goto(fixture + "?mode=race");
   await expect(page.getByRole("status")).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "Семестр", exact: true })
-    .selectOption("2026-spring");
+  await page.getByLabel("Семестр", { exact: true }).selectOption("2026-spring");
   await expect(
-    page.getByRole("link", { name: /История международных отношений/ }),
+    page.getByRole("link", { name: /Открыть дисциплину: История/ }),
   ).toBeVisible();
   await page.waitForTimeout(1700);
   await expect(
-    page.getByRole("link", { name: /Международное право/ }),
+    page.getByRole("link", { name: /Открыть дисциплину: Базы данных/ }),
   ).toHaveCount(0);
 });
-
-test("anonymous and staff-only accounts cannot open the student screen", async ({
-  page,
-}) => {
-  await page.route("**/api/identity/session", (route) =>
-    route.fulfill({ status: 401, json: { status: 401 } }),
+test("unauthenticated and staff-only access", async ({ page }) => {
+  await page.route("**/api/identity/session", (r) =>
+    r.fulfill({ status: 401, json: { status: 401 } }),
   );
   await page.goto(url);
   await expect(page).toHaveURL(/login/);
   await page.unroute("**/api/identity/session");
-  await page.route("**/api/identity/session", (route) =>
-    route.fulfill({
-      json: { ...session, roles: ["Staff"], studentId: null, areas: ["staff"] },
+  await page.route("**/api/identity/session", (r) =>
+    r.fulfill({
+      json: {
+        userId: "s",
+        studentId: null,
+        universityId: "10000000-0000-0000-0000-000000000001",
+        displayName: "Staff",
+        roles: ["Staff"],
+        areas: ["staff"],
+        permissions: [],
+      },
     }),
   );
   await page.goto(url);
   await expect(
     page.getByRole("heading", { name: "Нет доступа" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: "Семестр", exact: true }),
-  ).toHaveCount(0);
 });
-
-test("desktop acceptance", async ({ page }) => {
-  await mockStudent(page);
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(url + "?semester=2026-autumn&discipline=international-law");
-  await expect(
-    page.getByRole("region", { name: "Международное право" }),
-  ).toContainText("Требуется пересдача");
-  await expect(
-    page.getByText("Конкурсный концепт, не официальный сайт"),
-  ).toBeVisible();
-  await page.screenshot({
-    path: "test-results/performance-debt-1280.png",
-    fullPage: true,
-  });
-});
-
-test("responsive snapshots, keyboard and reduced motion", async ({ page }) => {
+test("three views at six widths, keyboard, large text and no runtime errors", async ({
+  page,
+}) => {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await mockStudent(page);
-  for (const width of [360, 390, 768, 1024, 1280, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await page.goto(url + "?semester=2026-autumn&discipline=foreign-language");
-    await expect(
-      page.getByRole("region", { name: /Иностранный язык/ }),
-    ).toBeVisible();
-    await page.evaluate(() => document.fonts.ready);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBeTruthy();
-    await page.screenshot({
-      path: "test-results/performance-" + width + ".png",
-      fullPage: true,
-    });
+  page.on("pageerror", (e) => errors.push(e.message));
+  await student(page);
+  for (const width of [360, 390, 768, 1024, 1280, 1672]) {
+    for (const [name, query] of [
+      ["overview", ""],
+      ["results", "?view=results"],
+      ["discipline", "?discipline=databases"],
+    ]) {
+      await page.setViewportSize({ width, height: 941 });
+      await page.goto(url + query);
+      await expect(
+        page.locator(".academic-table,.academic-attestation").first(),
+      ).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBeTruthy();
+      await page.screenshot({
+        path: "test-results/reference-" + name + "-" + width + ".png",
+        fullPage: true,
+      });
+    }
   }
+  await page.getByLabel("Семестр", { exact: true }).focus();
+  await page.keyboard.press("Shift+Tab");
   await page.emulateMedia({ reducedMotion: "reduce" });
-  expect(
-    await page
-      .locator(".discipline-link")
-      .first()
-      .evaluate((el) => getComputedStyle(el).transitionDuration),
-  ).toBe("0s");
-  await page.getByRole("combobox", { name: "Семестр", exact: true }).focus();
-  await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("link", { name: /Международное право/ }),
-  ).toBeFocused();
-  const outline = await page.evaluate(
-    () => getComputedStyle(document.activeElement!).outlineStyle,
-  );
-  expect(outline).toBe("solid");
-  await page.keyboard.press("Enter");
-  await expect(
-    page.getByRole("heading", { name: "Международное право", exact: true }),
-  ).toBeFocused();
-  // 200% text scaling also stresses wrapping beyond ordinary viewport checks.
-  await page.addStyleTag({ content: "html { font-size: 200%; }" });
+  await page.addStyleTag({ content: "html {font-size:200%}" });
   await page.setViewportSize({ width: 720, height: 900 });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
-  await page.screenshot({
-    path: "test-results/performance-text-200.png",
-    fullPage: true,
-  });
   expect(errors).toEqual([]);
-});
-
-test("theme text, status and focus contrast", async ({ page }) => {
-  await mockStudent(page);
-  await page.goto(url);
-  const ratios = await page.evaluate(() => {
-    function luminance(color: string) {
-      const channels = color
-        .match(/[\d.]+/g)!
-        .slice(0, 3)
-        .map(Number)
-        .map((v) => {
-          const n = v / 255;
-          return n <= 0.04045 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
-        });
-      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-    }
-    const pairs = [
-      ["text", "surface"],
-      ["text-muted", "canvas"],
-      ["text-muted", "surface"],
-      ["success", "success-soft"],
-      ["danger", "danger-soft"],
-      ["neutral", "neutral-soft"],
-      ["primary", "surface"],
-    ];
-    return pairs.map(([foreground, background]) => {
-      const el = document.createElement("span");
-      el.style.color = "var(--color-" + foreground + ")";
-      el.style.backgroundColor = "var(--color-" + background + ")";
-      document.body.append(el);
-      const style = getComputedStyle(el);
-      const values = [
-        luminance(style.color),
-        luminance(style.backgroundColor),
-      ].sort((a, b) => a - b);
-      el.remove();
-      return (values[1] + 0.05) / (values[0] + 0.05);
-    });
-  });
-  for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });

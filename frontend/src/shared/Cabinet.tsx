@@ -52,7 +52,17 @@ export function Cabinet({ area }: { area: Area }) {
         session.permissions.some((g) => g.permission === p.permission)),
   );
   if (area === "student" && pathname === "/student/academic-performance") {
-    return <PerformanceShell pages={pages} name={session.displayName} onLogout={() => { void logout().catch(() => setFailed(true)); }}><Outlet /></PerformanceShell>;
+    return (
+      <PerformanceShell
+        pages={pages}
+        name={session.displayName}
+        onLogout={() => {
+          void logout().catch(() => setFailed(true));
+        }}
+      >
+        <Outlet />
+      </PerformanceShell>
+    );
   }
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-8">

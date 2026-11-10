@@ -5,6 +5,8 @@ import { Page } from "../../src/modules/academic-performance/Page";
 import { loadDemoPerformance } from "../../src/modules/academic-performance/demo";
 import type { PerformanceLoader } from "../../src/modules/academic-performance/model";
 import "../../src/style.css";
+import { PerformanceShell } from "../../src/modules/academic-performance/PerformanceShell";
+import { modulePages } from "../../src/modules/sections";
 const mode = new URLSearchParams(location.search).get("mode");
 let calls = 0;
 const loader: PerformanceLoader = async (id, signal) => {
@@ -32,8 +34,12 @@ const loader: PerformanceLoader = async (id, signal) => {
 };
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
-    <main className="p-4">
+    <PerformanceShell
+      pages={modulePages.filter((p) => p.area === "student")}
+      name="Александр"
+      onLogout={() => location.assign("/login")}
+    >
       <Page loader={loader} />
-    </main>
+    </PerformanceShell>
   </BrowserRouter>,
 );

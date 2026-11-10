@@ -68,6 +68,7 @@ test("existing login, profile, navigation and logout with mocked HTTP", async ({
   await expect(
     page.getByRole("heading", { name: "Успеваемость", exact: true }),
   ).toBeFocused();
+  await page.getByLabel("Меню профиля").click();
   await page.getByRole("button", { name: "Выйти", exact: true }).click();
   await expect(page).toHaveURL(/login/);
   await page.goto("/student/academic-performance");
