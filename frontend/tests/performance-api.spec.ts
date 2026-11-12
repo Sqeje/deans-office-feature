@@ -253,7 +253,7 @@ test("API UI states: loading, retry without demo fallback, empty semester, denie
   );
   await page.reload();
   await expect(page).toHaveURL(/login\?expired=1/);
-  await expect(page.getByText("Сеанс завершён. Войдите снова.")).toBeVisible();
+  await expect(page.getByText("Сеанс завершён. Войдите снова")).toBeVisible();
 });
 
 test("staff changes selection safely, keeps failed input, prevents duplicate save and supports long text", async ({
@@ -381,6 +381,9 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
 test("home does not invent a numerical average when there are no finals", async ({
   page,
 }) => {
+  await page.route("**/api/identity/me", (r) =>
+    r.fulfill({ json: { university: "Тестовый университет", group: "Демо-01" } }),
+  );
   await page.route("**/api/identity/session", (r) =>
     r.fulfill({
       json: {

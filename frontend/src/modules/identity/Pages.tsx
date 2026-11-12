@@ -3,16 +3,7 @@ import { Navigate } from "react-router-dom";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
 import { Denied, EmptyState, ErrorState, Loading } from "../../shared/states";
-import { AcademicSummary } from "../academic-performance/Summary";
-export function StudentHome() {
-  const { session } = useSession();
-  return (
-    <>
-      <h1>Здравствуйте, {session?.displayName}</h1>
-      <AcademicSummary />
-    </>
-  );
-}
+export { StudentHome } from "./StudentHome";
 const permissionLabels: Record<string, string> = {
   "requests.manage": "Обработка обращений",
   "schedule.write": "Изменение расписания",
@@ -57,7 +48,8 @@ export function ProfilePage() {
   }, []);
   if (denied) return <Denied />;
   if (error) return <ErrorState />;
-  if (profile === null) return <Navigate to="/login" replace />;
+  if (profile === null)
+    return <Navigate to="/login" state={{ expired: true }} replace />;
   if (!profile) return <Loading />;
   return (
     <>

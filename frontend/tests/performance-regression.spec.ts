@@ -58,6 +58,7 @@ test("existing login, profile, navigation and logout with mocked HTTP", async ({
     path: "test-results/regression-home-360.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Меню профиля" }).click();
   await page.getByRole("link", { name: "Профиль", exact: true }).click();
   await expect(page.getByText(name, { exact: true })).toBeVisible();
   await page.reload();

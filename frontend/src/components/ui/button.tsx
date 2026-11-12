@@ -7,10 +7,9 @@ const variants = cva(
   {
     variants: {
       variant: {
-        primary:
-          "bg-primary text-white hover:bg-primary-hover active:bg-primary-pressed rounded-[10px] min-h-11",
-        default: "bg-slate-900 text-white hover:bg-slate-700",
-        outline: "border border-slate-300 bg-white text-slate-900",
+        default: "ui-button ui-button-primary",
+        primary: "ui-button ui-button-primary",
+        outline: "ui-button ui-button-outline",
       },
     },
     defaultVariants: { variant: "default" },

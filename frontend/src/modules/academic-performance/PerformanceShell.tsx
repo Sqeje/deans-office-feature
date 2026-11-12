@@ -1,14 +1,16 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Link, NavLink } from "react-router-dom";
 import type { ModulePage } from "../../shared/module";
 import { Icon } from "./Icon";
 import "./performance.css";
 export function PerformanceShell({
+  mainRef,
   children,
   pages,
   name,
   onLogout,
 }: {
+  mainRef?: Ref<HTMLElement>;
   children: ReactNode;
   pages: ModulePage[];
   name: string;
@@ -66,7 +68,7 @@ export function PerformanceShell({
             </div>
           </details>
         </div>
-        <main id="academic-main" tabIndex={-1}>
+        <main ref={mainRef} id="academic-main" tabIndex={-1}>
           {children}
         </main>
         <footer>

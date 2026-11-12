@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -41,8 +43,16 @@ builder.Services.AddAntiforgery(o =>
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration["DataProtection:Path"] ?? "./keys"));
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    o.ForwardLimit = 1;
+    if (builder.Configuration["ReverseProxy:Address"] is { Length: > 0 } proxy)
+        o.KnownProxies.Add(IPAddress.Parse(proxy));
+});
 var app = builder.Build();
 if (args.Contains("--initialize")) { await DemoSeed.Run(app.Services, app.Configuration); return; }
+app.UseForwardedHeaders();
 app.UseKernelHttp();
 app.UseAuthentication();
 app.UseAuthorization();
