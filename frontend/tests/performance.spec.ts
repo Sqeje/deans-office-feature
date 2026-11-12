@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mockPerformance } from "./performance-http";
 import {
   summarize,
   formatDate,
@@ -6,6 +7,7 @@ import {
 } from "../src/modules/academic-performance/model";
 const url = "/student/academic-performance";
 async function student(page: Page) {
+  await mockPerformance(page);
   await page.route("**/api/identity/session", (r) =>
     r.fulfill({
       json: {

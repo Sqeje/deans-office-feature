@@ -15,44 +15,57 @@ export const client = createClient<paths>({
   baseUrl: "",
   credentials: "same-origin",
 });
-async function check(response: Response) {
+export async function check(response: Response, problem?: unknown) {
   if (response.ok) return;
-  const p = await response
-    .clone()
-    .json()
-    .catch(() => ({}));
-  throw new ApiError(response.status, p.code ?? "request_failed", p.traceId);
+  // openapi-fetch has already consumed error responses; reuse its parsed body.
+  const p =
+    problem ??
+    (response.bodyUsed
+      ? {}
+      : await response
+          .clone()
+          .json()
+          .catch(() => ({})));
+  const details =
+    typeof p === "object" && p !== null
+      ? (p as { code?: string; traceId?: string })
+      : {};
+  throw new ApiError(
+    response.status,
+    details.code ?? "request_failed",
+    details.traceId,
+  );
 }
-async function csrf() {
-  const { data, response } = await client.GET("/api/identity/csrf");
-  await check(response);
+export async function csrf() {
+  const { data, error, response } = await client.GET("/api/identity/csrf");
+  await check(response, error);
   if (!data) throw new Error("CSRF unavailable");
   return { "X-CSRF-TOKEN": data.token };
 }
 export const api = {
   async session(): Promise<Session | null> {
-    const { data, response } = await client.GET("/api/identity/session");
+    const { data, error, response } = await client.GET("/api/identity/session");
     if (response.status === 401) return null;
-    await check(response);
+    await check(response, error);
     return data!;
   },
   async me(): Promise<Profile | null> {
-    const { data, response } = await client.GET("/api/identity/me");
+    const { data, error, response } = await client.GET("/api/identity/me");
     if (response.status === 401) return null;
-    await check(response);
+    await check(response, error);
     return data!;
   },
   async login(email: string, password: string) {
-    const { response } = await client.POST("/api/identity/login", {
+    const { error, response } = await client.POST("/api/identity/login", {
       body: { email, password },
       headers: await csrf(),
     });
-    await check(response);
+    await check(response, error);
   },
   async logout() {
-    const { response } = await client.POST("/api/identity/logout", {
+    const { error, response } = await client.POST("/api/identity/logout", {
       headers: await csrf(),
     });
-    await check(response);
+    await check(response, error);
   },
 };

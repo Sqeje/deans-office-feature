@@ -1,28 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Button } from "../../components/ui/button";
 import { SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
-import { defaultSemesterId, loadDemoPerformance, semesters } from "./demo";
+import { loadPerformance, loadSemesters } from "./api";
+import { RequestFailure, useRemote } from "./remote";
 import { Overview, AllResults } from "./Views";
 import { DisciplinePage } from "./DisciplinePage";
 import { Icon } from "./Icon";
-import { type PerformanceLoader, type SemesterPerformance } from "./model";
+import { type PerformanceLoader, type SemesterCatalog } from "./model";
 import "./performance.css";
 
-type State = {
-  semester: string;
-  attempt: number;
-  status: "loading" | "error" | "success";
-  data?: SemesterPerformance;
-};
 export function Page({
-  loader = loadDemoPerformance,
+  loader = loadPerformance,
+  catalogLoader = loadSemesters,
+  demonstration = false,
 }: {
   loader?: PerformanceLoader;
+  catalogLoader?: (signal: AbortSignal) => Promise<SemesterCatalog>;
+  demonstration?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
-  const semesterId = params.get("semester") ?? defaultSemesterId;
+  const catalog = useRemote("semesters", catalogLoader);
+  const semesters = catalog.data?.semesters ?? [];
+  const semesterId =
+    params.get("semester") ?? catalog.data?.defaultSemesterId ?? "";
   const semester = semesters.find((s) => s.id === semesterId);
   const disciplineId = params.get("discipline");
   const all = params.get("view") === "results";
@@ -31,35 +32,17 @@ export function Page({
   )
     ? (params.get("filter") ?? "all")
     : "all";
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<State>({
-    semester: semesterId,
-    attempt,
-    status: "loading",
-  });
+  const load = useCallback(
+    (signal: AbortSignal) => loader(semesterId, signal),
+    [semesterId, loader],
+  );
+  const result = useRemote(semester ? semesterId : "", load);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [disciplineId, all]);
-  useEffect(() => {
-    if (!semester) return;
-    const controller = new AbortController();
-    setState({ semester: semesterId, attempt, status: "loading" });
-    void Promise.resolve()
-      .then(() => loader(semesterId, controller.signal))
-      .then((data) => {
-        if (!controller.signal.aborted)
-          setState({ semester: semesterId, attempt, status: "success", data });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setState({ semester: semesterId, attempt, status: "error" });
-      });
-    return () => controller.abort();
-  }, [semesterId, semester, loader, attempt]);
-  const current = state.semester === semesterId && state.attempt === attempt;
-  const data = current && state.status === "success" ? state.data : undefined;
+  const data = result.data;
   const selected = data?.disciplines.find((d) => d.id === disciplineId);
   const href = (id?: string) => {
     const next = new URLSearchParams(params);
@@ -117,27 +100,31 @@ export function Page({
               Неизвестный семестр
             </option>
           )}
-          {semesters.map((s, i) => (
+          {semesters.map((s) => (
             <option key={s.id} value={s.id}>
-              {["Семестр 7", "Семестр 6", "Семестр 8"][i]}
+              {s.label}
             </option>
           ))}
         </SelectField>
       </header>
-      {!semester ? (
+      {catalog.error ? (
+        <RequestFailure error={catalog.error} retry={catalog.retry} />
+      ) : !catalog.data ? (
+        <Skeleton />
+      ) : !semesters.length ? (
+        <EmptyState
+          title="Семестров пока нет"
+          text="Учебные данные ещё не добавлены."
+        />
+      ) : !semester ? (
         <EmptyState
           title="Семестр не найден"
           text="Выберите доступный семестр."
         />
-      ) : !current || state.status === "loading" ? (
+      ) : result.error ? (
+        <RequestFailure error={result.error} retry={result.retry} />
+      ) : !data ? (
         <Skeleton />
-      ) : state.status === "error" ? (
-        <section className="academic-panel" role="alert">
-          <h2>Не удалось загрузить успеваемость</h2>
-          <Button variant="primary" onClick={() => setAttempt((n) => n + 1)}>
-            Повторить
-          </Button>
-        </section>
       ) : (
         data && (
           <>
@@ -167,6 +154,7 @@ export function Page({
             ) : data.disciplines.length ? (
               <Overview
                 disciplines={data.disciplines}
+                summary={data.summary}
                 href={href}
                 allHref={"?semester=" + semesterId + "&view=results"}
               />
@@ -179,9 +167,11 @@ export function Page({
           </>
         )
       )}
-      <p className="academic-demo-note">
-        Учебные примеры, не персональные результаты.
-      </p>
+      {demonstration && (
+        <p className="academic-demo-note">
+          Учебные примеры, не персональные результаты.
+        </p>
+      )}
     </div>
   );
 }

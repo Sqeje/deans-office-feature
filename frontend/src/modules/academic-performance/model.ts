@@ -3,6 +3,7 @@ export type ResultStatus = "passed" | "debt" | "pending";
 export type FinalResult =
   | { kind: "grade"; value: Grade }
   | { kind: "credit" }
+  | { kind: "failed-credit" }
   | null;
 // Calendar dates (YYYY-MM-DD), not instants in the browser's time zone.
 export interface CurrentGrade {
@@ -12,6 +13,7 @@ export interface CurrentGrade {
   value: Grade;
 }
 export interface Discipline {
+  isLocal?: boolean;
   teacher?: string;
   assessmentDate?: string;
   id: string;
@@ -27,9 +29,22 @@ export interface Semester {
   id: string;
   label: string;
 }
+export interface PerformanceSummary {
+  total: number;
+  passed: number;
+  debts: number;
+  average: number | null;
+  credits: number;
+  nextExam: { courseId: string; name: string; date: string } | null;
+}
 export interface SemesterPerformance {
   semesterId: string;
   disciplines: readonly Discipline[];
+  summary?: PerformanceSummary;
+}
+export interface SemesterCatalog {
+  semesters: readonly Semester[];
+  defaultSemesterId: string | null;
 }
 export type PerformanceLoader = (
   semesterId: string,
@@ -60,7 +75,9 @@ export function finalLabel(result: FinalResult) {
     ? "Не выставлена"
     : result.kind === "credit"
       ? "Зачтено"
-      : String(result.value);
+      : result.kind === "failed-credit"
+        ? "Не зачтено"
+        : String(result.value);
 }
 export const resultPresentation = {
   passed: { label: "Сдано", tone: "success" },

@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { api } from "../../shared/api";
 import { useSession } from "../../shared/session";
 export function Login() {
+  const [params] = useSearchParams();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const navigate = useNavigate();
@@ -30,6 +31,9 @@ export function Login() {
       <Link to="/">← На главную</Link>
       <form onSubmit={submit} className="card mt-6">
         <h1>Вход в кабинет</h1>
+        {params.get("expired") === "1" && (
+          <p role="status">Сеанс завершён. Войдите снова.</p>
+        )}
         <label htmlFor="email">Электронная почта</label>
         <input
           id="email"
