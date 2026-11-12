@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { CalendarDays, Clock3, FileText, Bell, ArrowRight } from "lucide-react";
+import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
 import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
@@ -14,16 +14,29 @@ export function SummaryCard<T>({
   empty,
   children,
   className = "",
+  action,
 }: {
   title: string;
   block: Block<T>;
   empty: string;
   children: (data: T) => ReactNode;
   className?: string;
+  action?: { to: string; label: string };
 }) {
   return (
     <section className={`card ${className}`}>
-      <h2>{title}</h2>
+      <div className="summary-heading">
+        <h2>{title}</h2>
+        {action && block.status === "success" && block.data !== null && (
+          <Link
+            className="summary-action"
+            to={action.to}
+            aria-label={action.label}
+          >
+            <ChevronRight aria-hidden="true" />
+          </Link>
+        )}
+      </div>
       {block.status === "loading" ? (
         <p role="status" className="skeleton">
           Загружаем данные…
@@ -86,17 +99,14 @@ export function HomeSummaries({
           block={blocks?.lesson ?? success(data.lesson)}
           empty="Сегодня занятий нет"
           className="lesson-card"
+          action={{ to: "/student/schedule", label: "Перейти в расписание" }}
         >
           {(lesson) => (
             <>
-              <Clock3 className="hero-icon" aria-hidden="true" />
               <p className="lesson-title">
                 {time(lesson.startsAt)} · {lesson.title}
               </p>
               <p>{lesson.room}</p>
-              <Link to="/student/schedule">
-                Перейти в расписание <ArrowRight aria-hidden="true" />
-              </Link>
             </>
           )}
         </SummaryCard>
@@ -104,7 +114,7 @@ export function HomeSummaries({
           title="Важное событие"
           block={blocks?.event ?? success(data.event)}
           empty="Важных событий пока нет"
-          className="event-card"
+          className="event-card important-event"
         >
           {(event) => (
             <div className="summary-row">
@@ -118,6 +128,11 @@ export function HomeSummaries({
         </SummaryCard>
         <SummaryCard
           title="Успеваемость"
+          action={{
+            to: "/student/academic-performance",
+            label: "Вся успеваемость",
+          }}
+          className="grades-card"
           block={blocks?.performance ?? success(data.performance)}
           empty="Оценок пока нет"
         >
@@ -144,35 +159,34 @@ export function HomeSummaries({
                   <dd>{grades.average.toLocaleString("ru-RU")}</dd>
                 </dl>
               </div>
-              <Link to="/student/academic-performance">
-                Вся успеваемость <ArrowRight aria-hidden="true" />
-              </Link>
             </>
           )}
         </SummaryCard>
         <SummaryCard
           title="Моя заявка"
+          action={{ to: "/student/requests", label: "Все заявки" }}
+          className="request-card"
           block={blocks?.request ?? success(data.request)}
           empty="Заявок пока нет"
         >
           {(request) => (
             <>
-              <FileText className="summary-icon" aria-hidden="true" />
-              <h3>{request.title}</h3>
+              <div className="request-title">
+                <FileText className="summary-icon" aria-hidden="true" />
+                <h3>{request.title}</h3>
+              </div>
               <p>
                 <span className="status-badge">
                   {requestLabels[request.status]}
                 </span>
               </p>
               <p className="muted">Подана {date(request.submittedAt)}</p>
-              <Link to="/student/requests">
-                Все заявки <ArrowRight aria-hidden="true" />
-              </Link>
             </>
           )}
         </SummaryCard>
         <SummaryCard
           title="Последние уведомления"
+          action={{ to: "/student/notifications", label: "Все уведомления" }}
           block={
             blocks?.notifications ??
             success(data.notifications.length ? data.notifications : null)
@@ -193,9 +207,6 @@ export function HomeSummaries({
                   </li>
                 ))}
               </ul>
-              <Link to="/student/notifications">
-                Все уведомления <ArrowRight aria-hidden="true" />
-              </Link>
             </>
           )}
         </SummaryCard>
