@@ -102,7 +102,10 @@ export function Cabinet({ area }: { area: Area }) {
         К содержимому
       </a>
       <header className="cabinet-header">
-        <Brand to={"/" + area} />
+        <div className="cabinet-brand">
+          <Brand to={"/" + area} />
+          {area === "student" && <p>Студенческий портал</p>}
+        </div>
         <div className="profile-control">
           <button
             ref={trigger}

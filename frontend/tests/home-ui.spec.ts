@@ -112,6 +112,26 @@ for (const width of [360, 390, 768, 1024, 1280, 1440])
     await expect(
       page.getByRole("button", { name: "Меню профиля" }),
     ).toBeFocused();
+    const composition = await page.evaluate(() => {
+      const lesson = document.querySelector(".lesson-card")!;
+      const event = document.querySelector(".important-event")!;
+      const icon = event.querySelector("svg")!.getBoundingClientRect();
+      const text = event.querySelector("h3")!.getBoundingClientRect();
+      return {
+        lessonHeight: lesson.getBoundingClientRect().height,
+        labelSize: parseFloat(
+          getComputedStyle(lesson.querySelector("h2")!).fontSize,
+        ),
+        eventIconRight: icon.right,
+        eventTextLeft: text.left,
+      };
+    });
+    expect(composition.labelSize).toBe(14);
+    expect(composition.eventIconRight).toBeLessThanOrEqual(
+      composition.eventTextLeft,
+    );
+    if (width >= 1024)
+      expect(composition.lessonHeight).toBeLessThanOrEqual(180);
     await page.screenshot({
       path: `test-results/home-${width}.png`,
       fullPage: true,
