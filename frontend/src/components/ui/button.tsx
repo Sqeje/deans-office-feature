@@ -8,6 +8,7 @@ const variants = cva(
     variants: {
       variant: {
         default: "ui-button ui-button-primary",
+        primary: "ui-button ui-button-primary",
         outline: "ui-button ui-button-outline",
       },
     },

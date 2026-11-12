@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { mockPerformance } from "./performance-http";
+test.beforeEach(async ({ page }) => {
+  await mockPerformance(page);
+});
 test("login validates locally and password toggle never submits", async ({
   page,
 }) => {
@@ -163,14 +167,14 @@ test("profile expiry redirects and partial failure can be retried", async ({
         }),
   );
   await page.goto("/student");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("alert").filter({ hasText: "Не удалось загрузить профиль" })).toContainText(
     "Не удалось загрузить профиль",
   );
   await expect(
     page.getByRole("heading", { name: "Ближайшее занятие" }),
   ).toBeVisible();
   failed = false;
-  await page.getByRole("button", { name: "Повторить" }).click();
+  await page.getByRole("alert").filter({ hasText: "Не удалось загрузить профиль" }).getByRole("button", { name: "Повторить" }).click();
   await expect(
     page.getByText("Тестовый университет", { exact: false }),
   ).toBeVisible();

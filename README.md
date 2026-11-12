@@ -154,3 +154,5 @@ PostgreSQL готов → initialize: миграции → демо-данные
 Три области: `/student`, `/staff`, `/applicants`. Старые `/app/*` перенаправляются в кабинет студента. Учётная запись отделена от студенческого профиля. Разрешения сотрудника выдаются по операциям и группам, общевузовские — отдельно. Рабочие операции сотрудников, реальные источники и расписание ещё не реализованы.
 
 [Как подключить модуль и источник](docs/EXTENDING.md), [следующие срезы](docs/SLICES.md). Миграция KernelIdentity переносит прежние аккаунты/группы без смены паролей. Перед обновлением сохраните резервную копию: автоматический downgrade к схеме без сотрудников запрещён, восстановление выполняется из копии. Демо-seed требует три разных пароля аккаунтов и не сбрасывает уже существующие.
+
+AcademicPerformanceTests create unique `slice6_test_<uuid>` databases on the test server and remove them after testing. The test user requires CREATEDB; TEST_DATABASE must point to a dedicated test database.

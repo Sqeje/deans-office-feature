@@ -90,6 +90,7 @@ public static class DemoSeed
                 }
             await db.SaveChangesAsync();
         }
+        await Dean.Api.Modules.AcademicPerformance.AcademicDemoSeed.Run(db, universityId, groupId);
     }
     private static void Check(IdentityResult result)
     {

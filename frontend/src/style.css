@@ -793,3 +793,10 @@ h1:focus {
     padding: 16px 16px 16px 68px;
   }
 }
+
+:root {
+  --color-warning: #805300;
+  --color-warning-soft: #fff4d6;
+  --color-neutral-soft: #eceef2;
+  --color-primary-soft-hover: #d8e6ff;
+}

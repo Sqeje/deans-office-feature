@@ -15,7 +15,7 @@ export const client = createClient<paths>({
   baseUrl: "",
   credentials: "same-origin",
 });
-async function check(response: Response, problem?: unknown) {
+export async function check(response: Response, problem?: unknown) {
   if (response.ok) return;
   const value =
     problem ??
@@ -30,7 +30,7 @@ async function check(response: Response, problem?: unknown) {
     typeof p.traceId === "string" ? p.traceId : undefined,
   );
 }
-async function csrf() {
+export async function csrf() {
   const { data, response, error } = await client.GET("/api/identity/csrf");
   await check(response, error);
   if (!data) throw new Error("CSRF unavailable");

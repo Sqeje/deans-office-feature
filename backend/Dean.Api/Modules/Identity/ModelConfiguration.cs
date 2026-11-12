@@ -23,6 +23,7 @@ public sealed class StudentConfiguration : IEntityTypeConfiguration<StudentProfi
     public void Configure(EntityTypeBuilder<StudentProfile> b)
     {
         b.HasKey(x => x.UserId);
+        b.HasAlternateKey(x => new { x.UserId, x.StudyGroupId, x.UniversityId });
         b.HasOne(x => x.User).WithOne().HasForeignKey<StudentProfile>(x => new { x.UserId, x.UniversityId }).HasPrincipalKey<ApplicationUser>(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.StudyGroup).WithMany().HasForeignKey(x => new { x.StudyGroupId, x.UniversityId }).HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
     }

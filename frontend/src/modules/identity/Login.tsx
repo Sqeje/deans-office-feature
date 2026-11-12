@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Brand, PrototypeNotice } from "../../shared/brand";
@@ -18,7 +18,8 @@ export function Login() {
   const [fields, setFields] = useState({ username: "", password: "" });
   const lock = useRef(false);
   const form = useRef<HTMLFormElement>(null);
-  const expired = useLocation().state?.expired;
+  const [params] = useSearchParams();
+  const expired = useLocation().state?.expired || params.get("expired") === "1";
   const navigate = useNavigate();
   const { session, refresh, logout } = useSession();
   useEffect(() => {

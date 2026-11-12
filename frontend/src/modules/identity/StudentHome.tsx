@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
+import { AcademicSummary } from "../academic-performance/Summary";
 import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
 export type Block<T> =
   | { status: "loading" }
@@ -67,9 +68,11 @@ export type SummaryBlocks = {
 export function HomeSummaries({
   data,
   blocks,
+  livePerformance = false,
 }: {
   data: HomeDemoSnapshot;
   blocks?: SummaryBlocks;
+  livePerformance?: boolean;
 }) {
   const date = (v: string) =>
     new Intl.DateTimeFormat("ru-RU", {
@@ -126,6 +129,7 @@ export function HomeSummaries({
             </div>
           )}
         </SummaryCard>
+        {livePerformance ? <AcademicSummary /> : (
         <SummaryCard
           title="Успеваемость"
           action={{
@@ -162,6 +166,7 @@ export function HomeSummaries({
             </>
           )}
         </SummaryCard>
+        )}
         <SummaryCard
           title="Моя заявка"
           action={{ to: "/student/requests", label: "Все заявки" }}
@@ -264,7 +269,7 @@ export function StudentHome() {
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={homeDemo} />
+      <HomeSummaries data={homeDemo} livePerformance />
     </>
   );
 }
