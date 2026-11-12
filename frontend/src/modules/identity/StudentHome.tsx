@@ -1,3 +1,4 @@
+import { requestStatuses, requestDetailsUrl, useRequestSummary } from "../requests/model";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
@@ -178,11 +179,11 @@ export function HomeSummaries({
             <>
               <div className="request-title">
                 <FileText className="summary-icon" aria-hidden="true" />
-                <h3>{request.title}</h3>
+                <h3><Link to={requestDetailsUrl(request.id)}>{request.title}</Link></h3>
               </div>
               <p>
-                <span className="status-badge">
-                  {requestLabels[request.status]}
+                <span className={"status-badge status-" + requestStatuses[request.status].tone}>
+                  {requestStatuses[request.status].label}
                 </span>
               </p>
               <p className="muted">Подана {date(request.submittedAt)}</p>
@@ -222,6 +223,7 @@ export function HomeSummaries({
 
 const requestLabels = { in_review: "На рассмотрении" };
 export function StudentHome() {
+  const requestSummary = useRequestSummary();
   const { session } = useSession();
   const [profile, setProfile] = useState<Profile | null>();
   const [error, setError] = useState("");
@@ -269,7 +271,7 @@ export function StudentHome() {
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={homeDemo} livePerformance />
+      <HomeSummaries data={{ ...homeDemo, request: requestSummary }} livePerformance />
     </>
   );
 }

@@ -1,0 +1,27 @@
+﻿.requests {display:grid;gap:1rem;min-width:0;}
+.requests h1:focus {outline:none;}
+.requests form,.request-field {display:grid;gap:.5rem;}
+.requests form {gap:1rem;max-width:40rem;}
+.requests input,.requests select,.requests textarea {min-height:44px;width:100%;min-width:0;border:1px solid var(--color-control-border);border-radius:10px;padding:.75rem;background:var(--color-surface-raised);font:inherit;}
+.requests textarea {min-height:8rem;resize:vertical;}
+.requests .card,.request-details dd {overflow-wrap:anywhere;}
+.request-demo {padding:1rem;border:1px solid var(--color-border);border-radius:10px;color:var(--color-text-muted);}
+.request-list {list-style:none;padding:0;display:grid;gap:1rem;}
+.request-actions,.request-steps {display:flex;flex-wrap:wrap;gap:1rem;}
+.request-steps {padding-left:1.5rem;}
+.request-steps [aria-current] {color:var(--color-primary);font-weight:600;}
+.request-details {display:grid;gap:.5rem;margin:1rem 0;}
+.request-details dt {font-weight:600;}
+.request-details dd {margin:0;white-space:pre-wrap;}
+.requests input:focus-visible,.requests textarea:focus-visible,.requests select:focus-visible {outline:2px solid var(--color-primary);outline-offset:2px;}
+.requests [aria-invalid=true] {border-color:var(--color-danger);}
+.request-loading {min-height:10rem;}
+@media(min-width:768px){.request-details {grid-template-columns:minmax(8rem,1fr) minmax(0,3fr);}}
+/* Explicit variants outrank the legacy generic green badge in the shared theme. */
+.requests .status-badge.status-neutral {color:var(--color-neutral);background:var(--color-neutral-soft);}
+.requests .status-badge.status-danger {color:var(--color-danger);background:var(--color-danger-soft);}
+.requests .status-badge.status-success {color:var(--color-success);background:var(--color-success-soft);}
+.request-card .status-badge.status-neutral {color:var(--color-neutral);background:var(--color-neutral-soft);}
+.request-card .status-badge.status-danger {color:var(--color-danger);background:var(--color-danger-soft);}
+.requests {line-height:1.5;}
+.requests p {line-height:1.5;}
