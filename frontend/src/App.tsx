@@ -1,3 +1,4 @@
+import { RequestsSessionBoundary } from "./modules/requests/SessionBoundary";
 import { PublicHome, ApplicantsPage } from "./modules/identity/PublicHome";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Login } from "./modules/identity/Login";
@@ -17,7 +18,7 @@ function LegacyRedirect() {
 export function App() {
   return (
     <SessionProvider>
-      <Routes>
+      <RequestsSessionBoundary><Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/applicants" element={<ApplicantsPage />} />
@@ -58,7 +59,7 @@ export function App() {
             </main>
           }
         />
-      </Routes>
+      </Routes></RequestsSessionBoundary>
     </SessionProvider>
   );
 }
