@@ -40,6 +40,20 @@ export function Cabinet({ area }: { area: Area }) {
   const { session, error, logout } = useSession();
   const [failed, setFailed] = useState(false),
     [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logoutLock = useRef(false);
+  async function handleLogout() {
+    if (logoutLock.current) return;
+    logoutLock.current = true;
+    setLoggingOut(true);
+    setFailed(false);
+    try { await logout(); }
+    catch { setFailed(true); }
+    finally { logoutLock.current = false; setLoggingOut(false); }
+  }
+  const logoutError = failed ? (
+    <p role="alert" className="field-error">Не удалось выйти. Попробуйте ещё раз.</p>
+  ) : null;
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -72,7 +86,7 @@ export function Cabinet({ area }: { area: Area }) {
       document.removeEventListener("pointerdown", outside);
     };
   }, [open]);
-  if (error || failed) return <ErrorState />;
+  if (error) return <ErrorState />;
   if (session === undefined) return <Loading />;
   if (session === null) return <Navigate to="/login" replace />;
   if (!session.areas.includes(area))
@@ -94,7 +108,9 @@ export function Cabinet({ area }: { area: Area }) {
         mainRef={main}
         pages={pages}
         name={session.displayName}
-        onLogout={() => void logout().catch(() => setFailed(true))}
+        onLogout={() => void handleLogout()}
+        loggingOut={loggingOut}
+        logoutError={logoutError}
       >
         <Outlet />
       </PerformanceShell>
@@ -143,10 +159,12 @@ export function Cabinet({ area }: { area: Area }) {
                 ))}
               <Button
                 variant="outline"
-                onClick={() => void logout().catch(() => setFailed(true))}
+                disabled={loggingOut}
+                onClick={() => void handleLogout()}
               >
-                Выйти
+                {loggingOut ? "Выходим…" : "Выйти"}
               </Button>
+              {logoutError}
             </div>
           )}
         </div>

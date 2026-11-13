@@ -398,6 +398,7 @@ test("home does not invent a numerical average when there are no finals", async 
     }),
   );
   await mockPerformance(page);
+  await page.route("**/api/requests/student/summary", r => r.fulfill({status:204}));
   await page.route("**/api/academic-performance/student?*", (r) =>
     r.fulfill({
       json: {

@@ -9,12 +9,16 @@ export function PerformanceShell({
   pages,
   name,
   onLogout,
+  loggingOut = false,
+  logoutError,
 }: {
   mainRef?: Ref<HTMLElement>;
   children: ReactNode;
   pages: ModulePage[];
   name: string;
   onLogout: () => void;
+  loggingOut?: boolean;
+  logoutError?: ReactNode;
 }) {
   const icons: Record<string, string> = {
     "": "home",
@@ -64,7 +68,8 @@ export function PerformanceShell({
             </summary>
             <div className="academic-account-menu">
               <Link to="/student/profile">Мой профиль</Link>
-              <button onClick={onLogout}>Выйти</button>
+              <button disabled={loggingOut} onClick={onLogout}>{loggingOut ? "Выходим…" : "Выйти"}</button>
+              {logoutError}
             </div>
           </details>
         </div>

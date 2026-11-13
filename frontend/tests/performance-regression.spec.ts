@@ -1,3 +1,4 @@
+import { mockRequests } from './requests-http';
 import { test, expect } from "@playwright/test";
 import { mockPerformance } from "./performance-http";
 
@@ -5,7 +6,7 @@ test("existing login, profile, navigation and logout with mocked HTTP", async ({
   page,
 }) => {
   let loggedIn = false;
-  await mockPerformance(page);
+  await mockPerformance(page); await mockRequests(page);
   const name = "Александр Константинович Демонстрационный-Примеров";
   const session = {
     userId: "demo",

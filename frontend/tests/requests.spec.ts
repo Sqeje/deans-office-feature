@@ -1,8 +1,10 @@
+import { mockRequests } from './requests-http';
 import { mockPerformance } from "./performance-http";
 import { test, expect, type Page } from '@playwright/test';
-import { validateRequest, requestExamples } from '../src/modules/requests/model';
+import { validateRequest } from '../src/modules/requests/model';
+import { requestExamples } from '../src/modules/requests/demo';
 async function student(page: Page) { await page.route('**/api/identity/session', r => r.fulfill({ json: { userId: 'demo', studentId: 'demo', universityId: 'u', displayName: 'Студент', roles: ['Student'], areas: ['student'], permissions: [] } })); }
-test.beforeEach(async ({ page }) => student(page));
+test.beforeEach(async ({ page }) => { await student(page); await mockRequests(page); });
 test('validation boundaries', () => {
   expect(validateRequest({ kind: 'certificate', place: ' ', copies: 1 })).toHaveProperty('place');
   for (const copies of [0, 6, 1.5]) expect(validateRequest({ kind: 'certificate', place: 'Тест', copies })).toHaveProperty('copies');
@@ -15,7 +17,7 @@ for (const kind of ['certificate', 'statement']) test(`${kind}: fill review conf
   await page.goto('/student/requests'); await page.getByRole('link', { name: 'Создать заявку' }).click();
   if (kind === 'certificate') { await page.getByLabel('Место предъявления').fill('По месту требования'); } else { await page.getByLabel('Вид заявки').selectOption('statement'); await page.getByLabel('Причина', { exact: true }).fill('Учебный проект'); await page.getByLabel('Начало периода').fill('2026-11-10'); await page.getByLabel('Окончание периода').fill('2026-11-20'); }
   await page.getByRole('button', { name: 'Проверить' }).click(); await page.getByRole('button', { name: 'Редактировать' }).click(); await page.getByRole('button', { name: 'Проверить' }).click();
-  await page.getByRole('button', { name: 'Подтвердить демонстрацию' }).click(); await expect(page.getByRole('heading', { name: 'Демонстрация подтверждена' })).toBeVisible(); await expect(page.getByText('Номер ДЕМО-1005')).toBeVisible(); await page.getByRole('link', { name: 'Открыть заявку', exact: true }).click(); await page.reload(); await expect(page.getByRole('heading', { name: 'Заявка не найдена' })).toBeVisible();
+  await page.getByRole('button', { name: 'Отправить заявку' }).click(); await expect(page.getByRole('heading', { name: 'Заявка отправлена' })).toBeVisible(); await expect(page.getByText('Номер 1005', { exact: true })).toBeVisible(); await page.getByRole('link', { name: 'Открыть заявку', exact: true }).click(); await page.reload(); await expect(page.getByText('1005', { exact: false })).toBeVisible();
 });
 test('all status examples and unknown id', async ({ page }) => { for (const r of requestExamples) { await page.goto(`/student/requests?requestId=${r.id}`); await expect(page.getByText(r.number, { exact: false })).toBeVisible(); if (r.status === 'rejected') await expect(page.getByText('Причина отклонения:', { exact: false })).toBeVisible(); } await page.goto('/student/requests?requestId=unknown'); await expect(page.getByRole('heading', { name: 'Заявка не найдена' })).toBeVisible(); });
 test('field error focuses invalid input', async ({ page }) => { await page.goto('/student/requests?view=create'); await page.getByRole('button', { name: 'Проверить' }).click(); await expect(page.getByLabel('Место предъявления')).toBeFocused(); await expect(page.getByText('Укажите место предъявления')).toBeVisible(); });
@@ -31,12 +33,12 @@ test('anonymous and staff cannot open student requests',async({page})=>{
 });
 test('home and list share created request',async({page})=>{
  await mockPerformance(page); await page.route('**/api/identity/me',r=>r.fulfill({json:{university:'Демо',group:'ПИ-21'}}));
- await page.goto('/student/requests?view=create');await page.getByLabel('Место предъявления').fill('Для проверки главной');await page.getByRole('button',{name:'Проверить'}).click();await page.getByRole('button',{name:'Подтвердить демонстрацию'}).click();
+ await page.goto('/student/requests?view=create');await page.getByLabel('Место предъявления').fill('Для проверки главной');await page.getByRole('button',{name:'Проверить'}).click();await page.getByRole('button',{name:'Отправить заявку'}).click();
  await page.getByRole('navigation',{name:'Разделы'}).getByRole('link',{name:'Главная',exact:true}).click();
  const card=page.locator('.request-card');await expect(card).toContainText('Справка об обучении');await expect(card).toContainText('Отправлена');await card.getByRole('link',{name:'Справка об обучении'}).click();await expect(page.getByText('Для проверки главной')).toBeVisible();
 });
 test('demo store resets on session owner change',async()=>{
- const {resetRequestSession,demoSource}=await import('../src/modules/requests/model');
+ const {resetRequestSession,demoSource}=await import('../src/modules/requests/demo');
  resetRequestSession('university/student-a');
  await demoSource.create({kind:'certificate',place:'Временное значение',copies:1});
  expect((await demoSource.load()).length).toBe(5);

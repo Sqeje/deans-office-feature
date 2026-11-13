@@ -1,17 +1,6 @@
 import type { FrontendModule } from "../../shared/module";
 import { Page } from "./Page";
-import { EmptyState } from "../../shared/states";
-function StaffPage() {
-  return (
-    <>
-      <h1>Заявки</h1>
-      <EmptyState
-        title="Раздел в разработке"
-        text="Рабочие операции сотрудника будут добавлены отдельным срезом."
-      />
-    </>
-  );
-}
+import { StaffPage } from './StaffPage';
 export const requestsModule: FrontendModule = {
   id: "requests",
   pages: [

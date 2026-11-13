@@ -59,10 +59,26 @@ public sealed class IdentityTests
         Assert.NotEqual(first.Id, second.Id);
         Assert.Equal(first.Id, (await a.GetFromJsonAsync<ProfileResponse>($"/api/identity/me?id={second.Id}"))!.Id);
         Assert.Equal(HttpStatusCode.NotFound, (await a.GetAsync($"/api/identity/students/{second.Id}")).StatusCode);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreign = await db.StudentProfiles.AsNoTracking().SingleAsync(x => x.UserId == "legacy");
+            Assert.NotEqual(first.UniversityId, foreign.UniversityId);
+            var forged = await a.GetFromJsonAsync<ProfileResponse>($"/api/identity/me?studentId={foreign.UserId}&universityId={foreign.UniversityId}");
+            Assert.Equal(first, forged);
+        }
+        // The anonymous token used for login must not authorize authenticated logout.
+        Assert.Equal(HttpStatusCode.BadRequest, (await a.PostAsync("/api/identity/logout", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await a.GetAsync("/api/identity/session")).StatusCode);
+        a.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        var missingCsrf = await a.PostAsync("/api/identity/logout", null);
+        Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        Assert.Contains("csrf_invalid", await missingCsrf.Content.ReadAsStringAsync());
         // CSRF token is bound to the identity: refresh after login.
         await Csrf(a);
         Assert.Equal(HttpStatusCode.NoContent, (await a.PostAsync("/api/identity/logout", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await a.GetAsync("/api/identity/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await a.GetAsync("/api/identity/session")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/api/identity/me")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/health")).StatusCode);
         using var staff = factory.CreateClient();

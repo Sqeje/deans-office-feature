@@ -1,11 +1,12 @@
-import { requestExamples, type DemoRequest } from "../requests/model";
+import { requestExamples } from "../requests/demo";
+import type { RequestRecord } from "../requests/model";
 export interface HomeDemoSnapshot {
   asOf: string;
   timeZone: string;
   lesson: { id: string; title: string; startsAt: string; room: string } | null;
   event: { title: string; deadline: string } | null;
   performance: { average: number; maximum: number; passed: number } | null;
-  request: Pick<DemoRequest, 'id' | 'title' | 'status' | 'submittedAt'> | null;
+  request: Pick<RequestRecord, 'id' | 'title' | 'status' | 'submittedAt'> | null;
   notifications: { id: string; title: string; unread: boolean }[];
 }
 export const homeDemo: HomeDemoSnapshot = {

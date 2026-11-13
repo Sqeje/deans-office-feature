@@ -150,3 +150,32 @@ test("staff has a separate mobile workspace and applicants stay public", async (
     .click();
   await expect(page).toHaveURL(/login/);
 });
+
+test("real accounts can switch in one browser and logout closes API and cabinet", async ({ page }) => {
+  for (const [number, name] of [[1, "Алексей Примеров"], [2, "Мария Образцова"]] as const) {
+    const password = process.env[`DEMO_PASSWORD${number}`];
+    if (!password) throw new Error(`Set DEMO_PASSWORD${number}`);
+    await page.goto("/student/profile");
+    await expect(page).toHaveURL(/login/);
+    await page.getByLabel("Электронная почта").fill(`student${number}@demo.invalid`);
+    await page.getByLabel("Пароль", { exact: true }).fill(password);
+    await page.getByLabel("Пароль", { exact: true }).press("Enter");
+    await expect(page.getByRole("heading", { name: `Здравствуйте, ${name}` })).toBeVisible();
+    await page.goto("/student/profile");
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await expect(page.getByText(`student${number}@demo.invalid`, { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    if (number === 2) await expect(page.getByText("Алексей Примеров", { exact: true })).toHaveCount(0);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.screenshot({ path: `test-results/identity-real-profile-${number}-1280.png`, fullPage: true });
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.getByLabel("Меню профиля").click();
+    await page.getByRole("button", { name: "Выйти", exact: true }).click();
+    await expect(page).toHaveURL(/login/);
+    expect((await page.request.get("/api/identity/session")).status()).toBe(401);
+    expect((await page.request.get("/api/identity/me")).status()).toBe(401);
+    await page.goto("/student/profile");
+    await expect(page).toHaveURL(/login/);
+  }
+});
