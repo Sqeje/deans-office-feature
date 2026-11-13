@@ -34,7 +34,7 @@ for (const path of ["/student/profile", "/student/academic-performance"]) {
     await expect(page).toHaveURL(new RegExp(path + "$"));
     await page.getByRole("button", { name: "Выйти", exact: true }).click();
     await expect(page.getByRole("button", { name: "Выходим…" })).toBeDisabled();
-    expect(calls).toBe(2);
+    await expect.poll(() => calls).toBe(2);
     release();
     await expect(page).toHaveURL(/login/);
     await page.goto(path);
