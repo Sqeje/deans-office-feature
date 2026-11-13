@@ -1,4 +1,4 @@
-﻿.requests {display:grid;gap:1rem;min-width:0;}
+.requests {display:grid;gap:1rem;min-width:0;}
 .requests h1:focus {outline:none;}
 .requests form,.request-field {display:grid;gap:.5rem;}
 .requests form {gap:1rem;max-width:40rem;}
@@ -25,3 +25,5 @@
 .request-card .status-badge.status-danger {color:var(--color-danger);background:var(--color-danger-soft);}
 .requests {line-height:1.5;}
 .requests p {line-height:1.5;}
+.request-history {display:grid;gap:.75rem;padding-left:1.25rem;} .request-history li {overflow-wrap:anywhere;} .request-history p {white-space:pre-wrap;}
+.request-processing {display:grid;gap:.75rem;margin-top:1rem;max-width:40rem;} .requests .card {min-width:0;}

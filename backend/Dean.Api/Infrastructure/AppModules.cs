@@ -5,5 +5,5 @@ namespace Dean.Api.Infrastructure;
 
 public static class AppModules
 {
-    public static ModuleCatalog Create() => new(new IdentityModule(), new AcademicPerformanceModule());
+    public static ModuleCatalog Create() => new(new IdentityModule(), new AcademicPerformanceModule(), new Dean.Api.Modules.Requests.RequestsModule());
 }

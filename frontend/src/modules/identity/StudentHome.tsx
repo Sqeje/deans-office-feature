@@ -1,4 +1,5 @@
-import { requestStatuses, requestDetailsUrl, useRequestSummary } from "../requests/model";
+import { RequestSummary } from '../requests/Summary';
+import { requestStatuses, requestDetailsUrl } from "../requests/model";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
@@ -69,11 +70,11 @@ export type SummaryBlocks = {
 export function HomeSummaries({
   data,
   blocks,
-  livePerformance = false,
+  livePerformance = false, liveRequests = false,
 }: {
   data: HomeDemoSnapshot;
   blocks?: SummaryBlocks;
-  livePerformance?: boolean;
+  livePerformance?: boolean; liveRequests?: boolean;
 }) {
   const date = (v: string) =>
     new Intl.DateTimeFormat("ru-RU", {
@@ -168,7 +169,7 @@ export function HomeSummaries({
           )}
         </SummaryCard>
         )}
-        <SummaryCard
+        {liveRequests ? <RequestSummary /> : <SummaryCard
           title="Моя заявка"
           action={{ to: "/student/requests", label: "Все заявки" }}
           className="request-card"
@@ -189,7 +190,7 @@ export function HomeSummaries({
               <p className="muted">Подана {date(request.submittedAt)}</p>
             </>
           )}
-        </SummaryCard>
+        </SummaryCard>}
         <SummaryCard
           title="Последние уведомления"
           action={{ to: "/student/notifications", label: "Все уведомления" }}
@@ -223,7 +224,7 @@ export function HomeSummaries({
 
 const requestLabels = { in_review: "На рассмотрении" };
 export function StudentHome() {
-  const requestSummary = useRequestSummary();
+
   const { session } = useSession();
   const [profile, setProfile] = useState<Profile | null>();
   const [error, setError] = useState("");
@@ -271,7 +272,7 @@ export function StudentHome() {
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={{ ...homeDemo, request: requestSummary }} livePerformance />
+      <HomeSummaries data={homeDemo} livePerformance liveRequests />
     </>
   );
 }

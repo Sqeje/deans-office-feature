@@ -1,7 +1,8 @@
+import { mockRequests } from './requests-http';
 import { test, expect } from "@playwright/test";
 import { mockPerformance } from "./performance-http";
 test.beforeEach(async ({ page }) => {
-  await mockPerformance(page);
+  await mockPerformance(page); await mockRequests(page);
 });
 test("login validates locally and password toggle never submits", async ({
   page,
