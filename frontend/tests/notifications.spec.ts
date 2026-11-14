@@ -1,0 +1,70 @@
+import { test, expect } from '@playwright/test';
+import { mockPerformance } from './performance-http';
+import { mockRequests } from './requests-http';
+test.beforeEach(async ({ page }) => { await page.route('**/api/identity/session', r => r.fulfill({ json: { userId: 'demo', universityId: 'demo', displayName: 'Demo Student', roles: ['Student'], studentId: 'demo', permissions: [], areas: ['student'] } })); await page.route('**/api/identity/me', r => r.fulfill({ json: { fullName: 'Demo Student', university: 'Demo', group: 'IT-21' } })); await mockPerformance(page); await mockRequests(page); });
+test('demo feed, shared count, read actions and reload', async ({ page }) => {
+  const notificationRequests: string[] = [];
+  page.on('request', request => { if (request.url().includes('/api/notifications')) notificationRequests.push(request.url()); });
+  await page.goto('/student/notifications');
+  await expect(page.getByRole('heading', { name: 'Уведомления', exact: true })).toBeVisible();
+  await expect(page.getByText('Непрочитанных: 2', { exact: true })).toBeVisible();
+  await expect(page.locator('.notifications-feed > li')).toHaveCount(3);
+  const dates = await page.locator('.notifications-feed time').evaluateAll(elements => elements.map(el => Date.parse(el.getAttribute('datetime')!)));
+  expect(dates).toEqual([...dates].sort((a, b) => b - a));
+  expect(notificationRequests).toEqual([]);
+  await page.getByRole('button', { name: 'Отметить прочитанным' }).first().click();
+  await expect(page.getByText('Непрочитанных: 1', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Отметить всё как прочитанное' }).click();
+  await expect(page.getByText('Непрочитанных: 0', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Отметить всё как прочитанное' })).toBeDisabled();
+  await page.getByRole('link', { name: 'Главная', exact: true }).click();
+  await expect(page.locator('.notification-summary').getByText('Не прочитано', { exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Успеваемость', exact: true }).click();
+  await expect(page.locator('.notification-count')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.notification-count')).toHaveText('2');
+});
+test('explicit demo states and retry', async ({ page }) => {
+  await page.goto('/student/notifications');
+  await page.getByLabel('Состояние демонстрации').selectOption('empty');
+  await expect(page.getByText('Уведомлений пока нет', { exact: true })).toBeVisible();
+  await expect(page.getByText('Непрочитанных: 0', { exact: true })).toBeVisible();
+  await page.getByLabel('Состояние демонстрации').selectOption('loading');
+  await expect(page.getByText('Загружаем уведомления…', { exact: true })).toBeVisible();
+  await expect(page.locator('.notification-count')).toHaveCount(0);
+  await page.getByLabel('Состояние демонстрации').selectOption('error');
+  await expect(page.getByRole('alert')).toContainText('Не удалось загрузить уведомления');
+  await page.screenshot({ path: 'test-results/notifications-error.png', fullPage: true });
+  await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+  await expect(page.getByText('Непрочитанных: 2', { exact: true })).toBeVisible();
+});
+for (const width of [360, 390, 768, 1024, 1280, 1440]) test(`layout ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/student/notifications');
+  await expect(page.locator('.notifications-feed > li')).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `test-results/notifications-${width}.png`, fullPage: true });
+  if (width === 360) {
+    await page.getByLabel('Состояние демонстрации').focus();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Отметить всё как прочитанное' })).toBeFocused();
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: 'test-results/notifications-360-200percent.png', fullPage: true });
+  }
+});
+test('session boundary clears demo state and anonymous route requires login', async ({ page }) => {
+  await page.goto('/student/notifications');
+  await page.getByRole('button', { name: 'Отметить всё как прочитанное' }).click();
+  await page.route('**/api/identity/csrf', r => r.fulfill({ json: { token: 'test' } }));
+  await page.route('**/api/identity/logout', r => r.fulfill({ status: 204 }));
+  await page.getByRole('button', { name: 'Меню профиля' }).click();
+  await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+  await expect(page).toHaveURL(/login/);
+  await page.route('**/api/identity/session', r => r.fulfill({ status: 401 }));
+  await page.goto('/student/notifications');
+  await expect(page).toHaveURL(/login/);
+  await page.route('**/api/identity/session', r => r.fulfill({ json: { userId: 'second', displayName: 'Second Student', roles: ['Student'], areas: ['student'], permissions: [] } }));
+  await page.goto('/student/notifications');
+  await expect(page.getByText('Непрочитанных: 2', { exact: true })).toBeVisible();
+});

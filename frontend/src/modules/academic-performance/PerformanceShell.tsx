@@ -1,3 +1,4 @@
+import { NotificationCount } from "../notifications/state";
 import type { ReactNode, Ref } from "react";
 import { Link, NavLink } from "react-router-dom";
 import type { ModulePage } from "../../shared/module";
@@ -47,6 +48,7 @@ export function PerformanceShell({
               >
                 <Icon name={icons[p.path] ?? "document"} />
                 <span>{p.path === "requests" ? "Заявки" : p.title}</span>
+              {p.path === "notifications" && <NotificationCount />}
               </NavLink>
             ))}
         </nav>
