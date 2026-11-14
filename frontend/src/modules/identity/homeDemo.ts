@@ -1,3 +1,4 @@
+import { notificationExamples } from "../notifications/demo";
 import { requestExamples } from "../requests/demo";
 import type { RequestRecord } from "../requests/model";
 export interface HomeDemoSnapshot {
@@ -21,11 +22,5 @@ export const homeDemo: HomeDemoSnapshot = {
   event: { title: "Сдача курсовой работы", deadline: "2026-11-20" },
   performance: { average: 4.6, maximum: 5, passed: 12 },
   request: requestExamples[0],
-  notifications: [
-    {
-      id: "demo-notification-1",
-      title: "Обновлено расписание занятий",
-      unread: true,
-    },
-  ],
+  notifications: [...notificationExamples],
 };

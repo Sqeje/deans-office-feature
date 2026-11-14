@@ -1,3 +1,4 @@
+import { NotificationSummary } from "../notifications/Page";
 import { RequestSummary } from '../requests/Summary';
 import { requestStatuses, requestDetailsUrl } from "../requests/model";
 import { useEffect, useState, type ReactNode } from "react";
@@ -70,11 +71,11 @@ export type SummaryBlocks = {
 export function HomeSummaries({
   data,
   blocks,
-  livePerformance = false, liveRequests = false,
+  livePerformance = false, liveRequests = false, liveNotifications = false,
 }: {
   data: HomeDemoSnapshot;
   blocks?: SummaryBlocks;
-  livePerformance?: boolean; liveRequests?: boolean;
+  livePerformance?: boolean; liveRequests?: boolean; liveNotifications?: boolean;
 }) {
   const date = (v: string) =>
     new Intl.DateTimeFormat("ru-RU", {
@@ -191,7 +192,7 @@ export function HomeSummaries({
             </>
           )}
         </SummaryCard>}
-        <SummaryCard
+        {liveNotifications ? <NotificationSummary /> : <SummaryCard
           title="Последние уведомления"
           action={{ to: "/student/notifications", label: "Все уведомления" }}
           block={
@@ -216,7 +217,7 @@ export function HomeSummaries({
               </ul>
             </>
           )}
-        </SummaryCard>
+        </SummaryCard>}
       </div>
     </>
   );
@@ -272,7 +273,7 @@ export function StudentHome() {
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={homeDemo} livePerformance liveRequests />
+      <HomeSummaries data={homeDemo} livePerformance liveRequests liveNotifications />
     </>
   );
 }

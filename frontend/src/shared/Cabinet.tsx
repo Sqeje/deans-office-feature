@@ -1,3 +1,4 @@
+import { NotificationDemoProvider, NotificationCount } from "../modules/notifications/state";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import {
@@ -37,6 +38,12 @@ const icons: Record<string, typeof Home> = {
   notifications: Bell,
 };
 export function Cabinet({ area }: { area: Area }) {
+  const { session } = useSession();
+  return area === "student" && session?.areas.includes("student") ? (
+    <NotificationDemoProvider key={session.userId}><CabinetContent area={area} /></NotificationDemoProvider>
+  ) : <CabinetContent area={area} />;
+}
+function CabinetContent({ area }: { area: Area }) {
   const { session, error, logout } = useSession();
   const [failed, setFailed] = useState(false),
     [open, setOpen] = useState(false);
@@ -192,6 +199,7 @@ export function Cabinet({ area }: { area: Area }) {
                 >
                   <Icon aria-hidden="true" />
                   <span>{p.title}</span>
+                  {area === "student" && p.path === "notifications" && <NotificationCount />}
                 </NavLink>
               );
             })}
