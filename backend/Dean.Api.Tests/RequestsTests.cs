@@ -71,12 +71,12 @@ public sealed class RequestsTests
         Assert.Single(updates, r => r.StatusCode == HttpStatusCode.OK);
         Assert.Single(updates, r => r.StatusCode == HttpStatusCode.Conflict);
         using var scope = env.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.Single(await db.Set<StudentRequest>().ToArrayAsync()); Assert.Equal(2, await db.Set<RequestHistory>().CountAsync()); Assert.Single(await db.AuditEntries.ToArrayAsync());
+        Assert.Single(await db.Set<StudentRequest>().ToArrayAsync()); Assert.Equal(2, await db.Set<RequestHistory>().CountAsync()); Assert.Single(await db.AuditEntries.ToArrayAsync()); Assert.Single(await db.Set<Dean.Api.Modules.Notifications.Message>().ToArrayAsync());
         // Deliberately fail the audit insert in this disposable database: the whole SaveChanges must roll back.
         await db.Database.ExecuteSqlRawAsync("CREATE FUNCTION reject_test_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test failure'; END $$; CREATE TRIGGER reject_test_audit BEFORE INSERT ON \"AuditEntries\" FOR EACH ROW EXECUTE FUNCTION reject_test_audit();");
         Assert.Equal(HttpStatusCode.InternalServerError, (await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.Ready, 2))).StatusCode);
         var detail = (await student.GetFromJsonAsync<RequestDto>($"/api/requests/student/{id}"))!;
-        Assert.Equal(RequestStatus.InReview, detail.Status); Assert.Equal(2, detail.History.Length); Assert.Equal(1, await db.AuditEntries.CountAsync());
+        Assert.Equal(RequestStatus.InReview, detail.Status); Assert.Equal(2, detail.History.Length); Assert.Equal(1, await db.AuditEntries.CountAsync()); Assert.Equal(1, await db.Set<Dean.Api.Modules.Notifications.Message>().CountAsync());
     }
     [Fact]
     public async Task ServerEnforcesUniversityGroupRoleAndRevocation()
@@ -130,6 +130,72 @@ public sealed class RequestsTests
         Assert.Equal(grades, await db.Set<Dean.Api.Modules.AcademicPerformance.AcademicGrade>().CountAsync());
         Assert.Empty(await db.Set<StudentRequest>().ToArrayAsync());
     }
+    [Fact]
+    public async Task NotificationsPersistAndAnnouncementsRequirePermission()
+    {
+        await using var env = await TestApp.Create();
+        using var student = await env.Login("student1@demo.invalid", env.Password1);
+        using var other = await env.Login("student2@demo.invalid", env.Password2);
+        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var anon = env.Factory.CreateClient();
+        const string feed = "/api/notifications/student";
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync(feed)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync(feed)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await student.GetAsync(feed)).StatusCode);
+        await Csrf(student); await Csrf(staff);
+        var created = await student.PostAsJsonAsync("/api/requests/student", new CreateRequest(Guid.NewGuid(), new("certificate", "Test", 1)));
+        var request = (await created.Content.ReadFromJsonAsync<RequestDto>())!;
+        using (var scope = env.Factory.Services.CreateScope()) {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var migrator = db.Database.GetService<IMigrator>();
+            await migrator.MigrateAsync("20261113113424_RequestsPersistence"); await migrator.MigrateAsync();
+            Assert.Equal(request.Id, (await db.Set<StudentRequest>().SingleAsync()).Id);
+        }
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync($"/api/requests/staff/{request.Id}/status", new ChangeStatus(RequestStatus.InReview, 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync($"/api/requests/staff/{request.Id}/status", new ChangeStatus(RequestStatus.Ready, 2))).StatusCode);
+        var data = (await student.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>(feed))!;
+        Assert.Equal(2, data["unreadCount"]!.GetValue<int>());
+        var id = data["items"]![0]!["id"]!.GetValue<string>();
+        Assert.Equal(request.Id.ToString(), data["items"]![0]!["relatedId"]!.GetValue<string>());
+        await Csrf(other);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync($"{feed}/{id}/read", null)).StatusCode);
+        using (var scope = env.Factory.Services.CreateScope()) {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var foreignUniversity = Guid.NewGuid(); var foreignMessage = Guid.NewGuid();
+            db.Universities.Add(new() { Id = foreignUniversity, Name = "Foreign" });
+            db.Add(new Dean.Api.Modules.Notifications.Message { Id = foreignMessage, UniversityId = foreignUniversity, EventKey = "foreign", Category = "announcement", Title = "Hidden", Text = "Hidden", CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+            Assert.Equal(HttpStatusCode.NotFound, (await student.PostAsync($"{feed}/{foreignMessage}/read", null)).StatusCode);
+            Assert.DoesNotContain("Hidden", await student.GetStringAsync(feed));
+        }
+        Assert.Equal(HttpStatusCode.NoContent, (await student.PostAsync($"{feed}/{id}/read", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await student.PostAsync($"{feed}/{id}/read", null)).StatusCode);
+        using var fresh = await env.Login("student1@demo.invalid", env.Password1);
+        Assert.Equal(1, (await fresh.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>(feed))!["unreadCount"]!.GetValue<int>());
+        Assert.Equal(HttpStatusCode.BadRequest, (await fresh.PostAsync(feed + "/read-all", null)).StatusCode);
+        await Csrf(fresh);
+        Assert.Equal(HttpStatusCode.NoContent, (await fresh.PostAsync(feed + "/read-all", null)).StatusCode);
+        Assert.Equal(0, (await fresh.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>(feed))!["unreadCount"]!.GetValue<int>());
+        const string publish = "/api/notifications/staff/announcements";
+        var input = new { operationId = Guid.NewGuid(), title = "Объявление", text = "Текст" };
+        Assert.Equal(HttpStatusCode.Forbidden, (await student.PostAsJsonAsync(publish, input)).StatusCode);
+        using var noCsrf = await env.Login("staff@demo.invalid", env.StaffPassword);
+        Assert.Equal(HttpStatusCode.BadRequest, (await noCsrf.PostAsJsonAsync(publish, input)).StatusCode);
+        var publications = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => staff.PostAsJsonAsync(publish, input)));
+        Assert.Single(publications, x => x.StatusCode == HttpStatusCode.Created);
+        Assert.All(publications, x => Assert.True(x.IsSuccessStatusCode));
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(publish, input)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync(publish, new { input.operationId, title = "Другой", input.text })).StatusCode);
+        Assert.Equal(1, (await fresh.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>(feed))!["unreadCount"]!.GetValue<int>());
+        Assert.Equal(1, (await other.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>(feed))!["unreadCount"]!.GetValue<int>());
+        Assert.Equal(HttpStatusCode.BadRequest, (await staff.PostAsJsonAsync(publish, new { operationId = Guid.NewGuid(), title = " ", text = "Text" })).StatusCode);
+        using (var scope = env.Factory.Services.CreateScope()) {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.StaffGrants.RemoveRange(db.StaffGrants.Where(x => x.Permission == Permissions.AnnouncementsPublish)); await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync(publish, new { operationId = Guid.NewGuid(), title = "Title", text = "Text" })).StatusCode);
+    }
+
     private static async Task Csrf(HttpClient client)
     {
         var token = (await client.GetFromJsonAsync<CsrfResponse>("/api/identity/csrf"))!;

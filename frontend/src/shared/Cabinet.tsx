@@ -1,4 +1,4 @@
-import { NotificationDemoProvider, NotificationCount } from "../modules/notifications/state";
+import { NotificationProvider, NotificationCount } from "../modules/notifications/state";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import {
@@ -40,7 +40,7 @@ const icons: Record<string, typeof Home> = {
 export function Cabinet({ area }: { area: Area }) {
   const { session } = useSession();
   return area === "student" && session?.areas.includes("student") ? (
-    <NotificationDemoProvider key={session.userId}><CabinetContent area={area} /></NotificationDemoProvider>
+    <NotificationProvider key={session.userId}><CabinetContent area={area} /></NotificationProvider>
   ) : <CabinetContent area={area} />;
 }
 function CabinetContent({ area }: { area: Area }) {
