@@ -115,7 +115,7 @@ public sealed class RequestsModule : IAppModule
         }
         return Results.Created($"/api/requests/student/{row.Id}", Dto(row));
     }
-    private static async Task<IResult> Update(Guid id, ChangeStatus input, ICurrentActor current, AccessGuard guard, AppDbContext db, AuditWriter audit, HttpContext ctx, CancellationToken ct)
+    private static async Task<IResult> Update(Guid id, ChangeStatus input, ICurrentActor current, AccessGuard guard, AppDbContext db, AuditWriter audit, Dean.Api.Modules.Notifications.IRequestNotifications notifications, HttpContext ctx, CancellationToken ct)
     {
         var actor = (await current.Get(ct))!;
         var row = await Query(db, actor).SingleOrDefaultAsync(x => x.Id == id, ct);
@@ -130,6 +130,7 @@ public sealed class RequestsModule : IAppModule
         row.History.Add(new() { Id = Guid.NewGuid(), RequestId = row.Id, UniversityId = row.UniversityId, ActorId = actor.UserId, IsStaff = true,
             Version = row.Version, Status = row.Status, OccurredAt = row.UpdatedAt, RejectionReason = row.Status == "rejected" ? reason : null });
         db.Entry(row.History.Last()).State = EntityState.Added;
+        notifications.StatusChanged(row.UniversityId, row.StudentId, row.Id, row.Version, row.Status, row.UpdatedAt);
         await audit.Record("requests.status_changed", row.Id.ToString(), ct);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException) { return KernelHttp.Problem(ctx, 409, "status_conflict"); }

@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
+  // Live scenarios open several contexts; keep the Docker check within its CPU budget.
+  workers: 2,
   use: {
     baseURL: "http://localhost:5173",
     viewport: { width: 360, height: 800 },
