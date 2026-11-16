@@ -97,7 +97,7 @@ test("two student profiles, mobile navigation and logout", async ({
     });
     await page.getByRole("link", { name: "Расписание", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Расписание", exact: true }),
+      page.getByRole("heading", { name: "Моё расписание", exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Меню профиля" }).click();
     await page

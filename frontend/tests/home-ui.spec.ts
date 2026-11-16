@@ -92,7 +92,7 @@ for (const width of [360, 390, 768, 1024, 1280, 1440])
     await expect(
       page.getByText("Демонстрационные данные — не связаны", { exact: false }),
     ).toBeVisible();
-    await expect(page.getByRole("navigation").getByRole("link")).toHaveCount(5);
+    await expect(page.getByRole("navigation", { name: "Разделы", exact: true }).locator(".nav-link")).toHaveCount(5);
     await page.evaluate(() => document.fonts.ready);
     expect(
       await page.evaluate(() =>

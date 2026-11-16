@@ -1,8 +1,8 @@
 import { GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
-export function Brand({ to = "/" }: { to?: string }) {
+export function Brand({ to = "/", onClick }: { to?: string; onClick?: () => void }) {
   return (
-    <Link to={to} className="brand">
+    <Link to={to} className="brand" onClick={onClick}>
       <span className="brand-mark">
         <GraduationCap aria-hidden="true" />
       </span>

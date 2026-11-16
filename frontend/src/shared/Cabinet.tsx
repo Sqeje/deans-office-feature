@@ -39,6 +39,7 @@ export function Cabinet({ area }: { area: Area }) {
   const { session, error, logout } = useSession();
   const [failed, setFailed] = useState(false),
     [open, setOpen] = useState(false);
+  const [navigationVersion, setNavigationVersion] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -102,7 +103,7 @@ export function Cabinet({ area }: { area: Area }) {
         К содержимому
       </a>
       <header className="cabinet-header">
-        <Brand to={"/" + area} />
+        <Brand to={"/" + area} onClick={() => setNavigationVersion(value => value + 1)} />
         <div className="profile-control">
           <button
             ref={trigger}
@@ -146,12 +147,18 @@ export function Cabinet({ area }: { area: Area }) {
           {pages
             .filter((p) => area !== "student" || p.path !== "profile")
             .map((p) => {
-              const Icon = icons[p.path] ?? FileText;
+              if (p.Navigation) {
+                const Navigation = p.Navigation;
+                // Activating the brand also resets navigation when already on home.
+                return <Navigation key={`${p.path}:${navigationVersion}`} />;
+              }
+              const path = p.navigationPath ?? p.path;
+              const Icon = icons[path] ?? FileText;
               return (
                 <NavLink
                   end={p.path === ""}
                   key={p.path}
-                  to={"/" + area + (p.path ? "/" + p.path : "")}
+                  to={"/" + area + (path ? "/" + path : "")}
                   className={({ isActive }) =>
                     isActive ? "nav-link active" : "nav-link"
                   }
