@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { teachers } from "./catalog";
+import { useSchedulePaths } from "./paths";
 export function TeacherButton({ teacherId }: { teacherId: string }) {
+  const { base } = useSchedulePaths();
   const teacher = teachers.find(t => t.id === teacherId);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null), trigger = useRef<HTMLButtonElement>(null);
@@ -30,7 +32,7 @@ export function TeacherButton({ teacherId }: { teacherId: string }) {
         onClick={() => setOpen(value => !value)}>{teacher.shortName}</button>
       {open && <span className="schedule-teacher-popover" id={id} role="group" aria-label={`Карточка: ${teacher.name}`}>
         <strong>{teacher.name}</strong><span className="muted">Преподаватель</span>
-        <Link ref={firstLink} to={`/student/schedule/teachers/${teacher.id}?${search.toString()}`} onClick={() => setOpen(false)}>Посмотреть расписание →</Link>
+        <Link ref={firstLink} to={`${base}/teachers/${teacher.id}?${search.toString()}`} onClick={() => setOpen(false)}>Посмотреть расписание →</Link>
       </span>}
     </span>
   );

@@ -70,8 +70,10 @@ export interface ScheduleEvent extends Lesson {
   location: Location;
   category: "lesson" | "assessment";
   assessmentResult?: "passed" | "absent" | "failed";
+  serverBacked?: boolean;
+  groupName?: string;
 }
-export type Entity = { kind: "group" | "teacher"; id: string };
+export type Entity = { kind: "group" | "teacher"; id: string; name?: string; personal?: boolean; isDemo?: boolean };
 export interface EventQuery { entity: Entity; category: "lesson" | "assessment"; start: string; end: string }
 export type EventSource = (query: EventQuery, signal: AbortSignal) => Promise<ScheduleEvent[]>;
 
@@ -87,7 +89,7 @@ export function validDate(value: string | null): value is string {
 }
 
 
-export function assessmentOutcome(event: Lesson & { category?: ScheduleEvent["category"]; assessmentResult?: ScheduleEvent["assessmentResult"] }, now: Date) {
-  if (event.category !== "assessment" || event.change.status === "cancelled" || Date.parse(event.endsAt) > now.getTime()) return null;
+export function assessmentOutcome(event: Lesson & { category?: ScheduleEvent["category"]; assessmentResult?: ScheduleEvent["assessmentResult"]; serverBacked?: boolean }, now: Date) {
+  if (event.serverBacked || event.category !== "assessment" || event.change.status === "cancelled" || Date.parse(event.endsAt) > now.getTime()) return null;
   return event.assessmentResult ?? "passed";
 }

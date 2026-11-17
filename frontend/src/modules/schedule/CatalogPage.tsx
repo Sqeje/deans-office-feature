@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, Search } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { catalogPath, directions, programs, groups, groupPath, searchTeachers } from "./catalog";
+import { useSchedulePaths } from "./paths";
 
 export interface Crumb { title: string; to?: string }
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
@@ -12,18 +13,20 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
     </li>)}
   </ol></nav>;
 }
-export function groupCrumbs(groupId: string): Crumb[] {
+export function groupCrumbs(groupId: string, catalog = catalogPath): Crumb[] {
   const group = groups.find(g => g.id === groupId)!;
   const program = programs.find(p => p.id === group.programId)!;
   const direction = directions.find(d => d.id === program.directionId)!;
-  const base = `${catalogPath}/${direction.id}`;
-  return [{ title: "Все расписания", to: catalogPath }, { title: direction.name, to: base },
+  const base = `${catalog}/${direction.id}`;
+  return [{ title: "Все расписания", to: catalog }, { title: direction.name, to: base },
     { title: program.name, to: `${base}/${program.id}` }, { title: String(group.year), to: `${base}/${program.id}/${group.year}` }, { title: group.name }];
 }
 export function NotFound() {
-  return <section><h1>Расписание не найдено</h1><p>Проверьте адрес или выберите группу и преподавателя в каталоге.</p><Link to={catalogPath}>Открыть каталог</Link></section>;
+  const { catalog } = useSchedulePaths();
+  return <section><h1>Расписание не найдено</h1><p>Проверьте адрес или выберите группу и преподавателя в каталоге.</p><Link to={catalog}>Открыть каталог</Link></section>;
 }
 function TeacherSearch() {
+  const { base } = useSchedulePaths();
   const [search, setSearch] = useSearchParams();
   const query = search.get("q") ?? "";
   const [input, setInput] = useState(query);
@@ -36,10 +39,11 @@ function TeacherSearch() {
       <Button type="submit">Найти</Button>
     </form>
     <p className="sr-only" role="status">Найдено преподавателей: {results.length}</p>
-    {results.length ? <ul>{results.map(t => <li key={t.id}><Link to={`/student/schedule/teachers/${t.id}?${new URLSearchParams({ q: query }).toString()}`}>{t.shortName}</Link></li>)}</ul> : <p>Преподаватели не найдены. Измените запрос.</p>}
+    {results.length ? <ul>{results.map(t => <li key={t.id}><Link to={`${base}/teachers/${t.id}?${new URLSearchParams({ q: query }).toString()}`}>{t.shortName}</Link></li>)}</ul> : <p>Преподаватели не найдены. Измените запрос.</p>}
   </section>;
 }
 export function CatalogPage() {
+  const { base: scheduleBase, catalog: catalogPath } = useSchedulePaths();
   const { directionId, programId, year } = useParams();
   const direction = directions.find(d => d.id === directionId);
   const program = programs.find(p => p.id === programId && p.directionId === directionId);
@@ -54,7 +58,7 @@ export function CatalogPage() {
   const entries = !direction ? directions.map(d => ({ title: d.name, to: `${catalogPath}/${d.id}` }))
     : !program ? programs.filter(p => p.directionId === direction.id).map(p => ({ title: p.name, to: `${base}/${p.id}` }))
     : !year ? years.map(y => ({ title: String(y), to: `${base}/${program.id}/${y}` }))
-    : matchingGroups.filter(g => g.year === Number(year)).map(g => ({ title: g.name, to: groupPath(g.id) }));
+    : matchingGroups.filter(g => g.year === Number(year)).map(g => ({ title: g.name, to: groupPath(g.id, scheduleBase) }));
   return <>
     <Breadcrumbs items={crumbs} />
     <h1>{direction?.name ?? "Все расписания"}</h1>

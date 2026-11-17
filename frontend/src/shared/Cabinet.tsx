@@ -72,9 +72,9 @@ export function Cabinet({ area }: { area: Area }) {
       document.removeEventListener("pointerdown", outside);
     };
   }, [open]);
+  if (session === null) return <Navigate to="/login" replace />;
   if (error || failed) return <ErrorState />;
   if (session === undefined) return <Loading />;
-  if (session === null) return <Navigate to="/login" replace />;
   if (!session.areas.includes(area))
     return (
       <main className="p-6">

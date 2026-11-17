@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { ApiError } from "../../shared/api";
 import { CalendarDays } from "lucide-react";
 import { WeekPicker } from "./WeekPicker";
 import { Button } from "../../components/ui/button";
 import { scheduleSource } from "./source";
 import { ScheduleRow } from "./Rows";
 import { ExportButton } from "./ExportButton";
+import { useSchedulePaths } from "./paths";
 import { addDays, dateKey, formatDay, semesterOf, validDate, weekOf, type Entity, type EventSource, type ScheduleEvent } from "./model";
 
 const systemNow = () => new Date();
 const longDay = (day: string) => formatDay(day, { weekday: "long", day: "numeric", month: "long" });
 const date = (day: string) => formatDay(day, { day: "numeric", month: "long", year: "numeric" });
-type Load = { key: string; status: "loading" | "error" } | { key: string; status: "success"; events: ScheduleEvent[] };
+type Load = { key: string; status: "loading" | "error"; error?: unknown } | { key: string; status: "success"; events: ScheduleEvent[] };
 export function ScheduleView({ entity, heading, description, source = scheduleSource, getNow = systemNow }: { entity: Entity; heading?: string; description?: string; source?: EventSource; getNow?: () => Date }) {
   const [search, setSearch] = useSearchParams();
   const [now, setNow] = useState(getNow);
@@ -39,6 +41,14 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   }, [getNow]);
 
   useEffect(() => {
+    if (!entity.personal) return;
+    const refresh = () => setAttempt(value => value + 1);
+    const visible = () => { if (!document.hidden) refresh(); };
+    window.addEventListener("focus", refresh); document.addEventListener("visibilitychange", visible);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); };
+  }, [entity.personal]);
+
+  useEffect(() => {
     // Canonical URL state: malformed values fall back to a real date, never NaN.
     const next = new URLSearchParams(search);
     if (next.has("kind") && !["lessons", "assessments"].includes(next.get("kind")!)) next.delete("kind");
@@ -58,11 +68,16 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
       try {
         const events = await source({ entity: { kind: entityKind, id: entityId }, category, start, end }, controller.signal);
         if (active) setLoad({ key, status: "success", events });
-      } catch { if (active) setLoad({ key, status: "error" }); }
+      } catch (error) { if (active) setLoad({ key, status: "error", error }); }
     }
     void fetch();
     return () => { active = false; controller.abort(); };
   }, [key, entityKind, entityId, category, start, end, source, attempt]);
+
+  useEffect(() => {
+    if (load.key === key && load.status === "success" && search.get("event"))
+      document.getElementById(`lesson-${search.get("event")}`)?.scrollIntoView({ block: "center" });
+  }, [load, key, search]);
 
   function update(values: Record<string, string | null>) {
     const next = new URLSearchParams(search);
@@ -75,6 +90,8 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   const days = category === "assessment" ? [...new Set(visible.map(e => dateKey(new Date(e.startsAt))))]
     : mode === "today" ? [today] : weekOf(monday);
   const table = category === "lesson" && mode === "week";
+  if (state.status === "error" && state.error instanceof ApiError && state.error.status === 401)
+    return <Navigate to="/login" state={{ expired: true }} replace />;
   return <>
     <div className="schedule-view-header">
       <div>{heading && <h1>{heading}</h1>}{description && <p className="muted">{description}</p>}</div>
@@ -101,7 +118,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
     <p className="schedule-zone muted">Московское время · UTC+3</p>
     <div aria-busy={state.status === "loading"}>
       {state.status === "loading" ? <div className="card schedule-loading" role="status">Загружаем расписание…</div>
-        : state.status === "error" ? <div className="card" role="alert"><p>Не удалось загрузить расписание.</p><Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Повторить</Button></div>
+        : state.status === "error" ? <div className="card" role="alert"><p>{state.error instanceof ApiError && state.error.status === 403 ? "Нет доступа к расписанию." : "Не удалось загрузить расписание."}</p>{state.error instanceof ApiError && state.error.traceId && <p className="muted">Код обращения: {state.error.traceId}</p>}<Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Повторить</Button></div>
         : category === "assessment" && visible.length === 0 ? <Empty text="В этом семестре контрольных и экзаменов нет" />
         : days.map(day => {
           const lessons = visible.filter(e => dateKey(new Date(e.startsAt)) === day);
@@ -117,5 +134,6 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   </>;
 }
 function Empty({ text }: { text: string }) {
-  return <section className="card schedule-empty"><CalendarDays aria-hidden="true" /><h2>{text}</h2><Link to="/student/schedule/catalog">Выбрать другое расписание</Link></section>;
+  const { catalog } = useSchedulePaths();
+  return <section className="card schedule-empty"><CalendarDays aria-hidden="true" /><h2>{text}</h2><Link to={catalog}>Выбрать другое расписание</Link></section>;
 }

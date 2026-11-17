@@ -24,8 +24,8 @@ export const teachers = [
   { id: "mironov", name: "Александр Владимирович Миронов", shortName: "А. В. Миронов" },
 ];
 export const catalogPath = "/student/schedule/catalog";
-export function groupPath(id: string) {
-  return id === myGroupId ? "/student/schedule" : `/student/schedule/groups/${id}`;
+export function groupPath(id: string, base = "/student/schedule") {
+  return `${base}/groups/${id}`;
 }
 export function searchTeachers(query: string) {
   const normalize = (s: string) => s.toLocaleLowerCase("ru-RU").replaceAll("ё", "е").replace(/[.\s]+/g, " ").trim();

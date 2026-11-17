@@ -126,7 +126,7 @@ test("staff has a separate mobile workspace and applicants stay public", async (
   await expect(page).toHaveURL(/staff/);
   await expect(page.getByText("РАБОЧЕЕ МЕСТО СОТРУДНИКА")).toBeVisible();
   await expect(
-    page.getByText("Изменение расписания — Назначенная группа"),
+    page.getByText("Изменение расписания — Назначенная группа").first(),
   ).toBeVisible();
   await page.reload();
   await expect(

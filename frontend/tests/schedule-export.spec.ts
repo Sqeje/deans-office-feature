@@ -30,7 +30,7 @@ async function download(page: Page, outputPath?: string) {
 for (const entity of ["group", "teacher"] as const) {
   for (const mode of ["today", "week", "assessments"] as const) {
     test(`downloads real XLSX for ${entity} ${mode}`, async ({ page }, testInfo) => {
-      const base = entity === "group" ? "/student/schedule" : "/student/schedule/teachers/lebedev";
+      const base = entity === "group" ? "/student/schedule/groups/pi-21" : "/student/schedule/teachers/lebedev";
       const query = mode === "today" ? "" : mode === "week" ? "?view=week&week=2026-11-16" : "?kind=assessments&view=week&week=2025-01-06";
       await open(page, base + query);
       const { workbook, sheet, filename } = await download(page, testInfo.outputPath("schedule.xlsx"));
@@ -92,7 +92,7 @@ for (const entity of ["group", "teacher"] as const) {
 test("empty today exports a valid workbook with the selected date, also in another timezone", async ({ browser }) => {
   const context = await browser.newContext({ timezoneId: "America/Los_Angeles" });
   const page = await context.newPage();
-  await open(page, "/student/schedule", "2026-11-15T00:30:00+03:00");
+  await open(page, "/student/schedule/groups/pi-21", "2026-11-15T00:30:00+03:00");
   const { sheet, filename } = await download(page);
   expect(filename).toContain("2026-11-15");
   expect(sheet.getCell("A7").text).toBe("В выбранный период занятий нет");
@@ -124,7 +124,7 @@ test("XLSX scopes events, preserves previous values and keeps formula-looking te
 });
 
 test("a failed download shows an error and allows retry", async ({ page }) => {
-  await open(page, "/student/schedule");
+  await open(page, "/student/schedule/groups/pi-21");
   await page.evaluate(() => {
     const create = URL.createObjectURL.bind(URL);
     URL.createObjectURL = blob => { URL.createObjectURL = create; throw new Error("test download failure"); };

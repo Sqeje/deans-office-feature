@@ -1,25 +1,29 @@
-import { Navigate, Route, Routes, Link, useParams, useSearchParams } from "react-router-dom";
+import { Route, Routes, Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs, CatalogPage, groupCrumbs, NotFound } from "./CatalogPage";
-import { catalogPath, groups, myGroupId, teachers } from "./catalog";
+import { groups, teachers } from "./catalog";
 import { ScheduleView } from "./ScheduleView";
 import { ScheduleTabs } from "./Navigation";
+import { PersonalPage } from "./PersonalPage";
+import { TeacherPersonalPage } from "./TeacherPersonalPage";
+import { StaffPage } from "./StaffPage";
+import { useSchedulePaths } from "./paths";
 import "./schedule.css";
 export { ScheduleRow } from "./Rows";
-function GroupPage({ mine = false }: { mine?: boolean }) {
+function GroupPage() {
+  const { catalog } = useSchedulePaths();
   const { groupId } = useParams();
-  const [search] = useSearchParams();
-  const id = mine ? myGroupId : groupId;
+  const id = groupId;
   const group = groups.find(g => g.id === id);
   if (!group) return <NotFound />;
-  if (!mine && group.id === myGroupId) return <Navigate replace to={`/student/schedule?${search.toString()}`} />;
   return <>
-    <Breadcrumbs items={groupCrumbs(group.id)} />
+    <Breadcrumbs items={groupCrumbs(group.id, catalog)} />
     <ScheduleView entity={{ kind: "group", id: group.id }}
-      heading={mine ? "Моё расписание" : `Расписание группы ${group.name}`}
+      heading={`Расписание группы ${group.name}`}
       description={`Демонстрационная группа ${group.name}`} />
   </>;
 }
 function TeacherPage() {
+  const { catalog: catalogPath } = useSchedulePaths();
   const { teacherId } = useParams();
   const [search] = useSearchParams();
   const teacher = teachers.find(t => t.id === teacherId);
@@ -33,11 +37,16 @@ function TeacherPage() {
   </>;
 }
 export function Page() {
+  const { pathname } = useLocation();
+  const { base, staff } = useSchedulePaths();
+  const personal = pathname.replace(/\/$/, "") === base;
+  const editing = staff && pathname === `${base}/edit`;
   return <section className="schedule-page">
     <ScheduleTabs />
-    <aside className="demo-notice">Демонстрационные данные — не связаны с вашим профилем.</aside>
+    {!personal && !editing && <aside className="demo-notice">Каталог и расписания преподавателей: демонстрационные данные — не связаны с вашим профилем.</aside>}
     <Routes>
-      <Route index element={<GroupPage mine />} />
+      <Route index element={staff ? <TeacherPersonalPage /> : <PersonalPage />} />
+      {staff && <Route path="edit" element={<StaffPage />} />}
       <Route path="catalog" element={<CatalogPage />} />
       <Route path="catalog/:directionId" element={<CatalogPage />} />
       <Route path="catalog/:directionId/:programId" element={<CatalogPage />} />

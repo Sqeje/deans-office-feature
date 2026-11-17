@@ -4,6 +4,7 @@ import { CalendarDays, Clock3, FileText, Bell, ArrowRight } from "lucide-react";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
 import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
+import { useNextLesson } from "../schedule/NextLesson";
 export type Block<T> =
   | { status: "loading" }
   | { status: "error"; retry: () => void }
@@ -77,6 +78,7 @@ export function HomeSummaries({
   return (
     <>
       <aside className="demo-notice">
+        {blocks?.lesson && <p>Ближайшее занятие загружается с сервера. Остальные сводки:</p>}
         Демонстрационные данные — не связаны с вашим учебным профилем.
         Демонстрация на {date(data.asOf)}.
       </aside>
@@ -84,7 +86,7 @@ export function HomeSummaries({
         <SummaryCard
           title="Ближайшее занятие"
           block={blocks?.lesson ?? success(data.lesson)}
-          empty="Сегодня занятий нет"
+          empty="Ближайших занятий нет"
           className="lesson-card"
         >
           {(lesson) => (
@@ -93,8 +95,8 @@ export function HomeSummaries({
               <p className="lesson-title">
                 {time(lesson.startsAt)} · {lesson.title}
               </p>
-              <p>{lesson.room}</p>
-              <Link to="/student/schedule">
+              <p>{lesson.href ? `${date(lesson.startsAt)} · ` : ""}{lesson.room}</p>
+              <Link to={lesson.href ?? "/student/schedule"}>
                 Перейти в расписание <ArrowRight aria-hidden="true" />
               </Link>
             </>
@@ -207,6 +209,7 @@ export function HomeSummaries({
 const requestLabels = { in_review: "На рассмотрении" };
 export function StudentHome() {
   const { session } = useSession();
+  const next = useNextLesson(session?.userId);
   const [profile, setProfile] = useState<Profile | null>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -231,7 +234,7 @@ export function StudentHome() {
       active = false;
     };
   }, [attempt]);
-  if (profile === null)
+  if (profile === null || next.expired)
     return <Navigate to="/login" state={{ expired: true }} replace />;
   return (
     <>
@@ -253,7 +256,7 @@ export function StudentHome() {
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={homeDemo} />
+      <HomeSummaries data={homeDemo} blocks={{ lesson: next.block }} />
     </>
   );
 }

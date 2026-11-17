@@ -5,10 +5,13 @@ import { dateKey, assessmentOutcome, changedFields, formatDay, formatTime, isCur
 import { groups } from "./catalog";
 import { TeacherButton } from "./TeacherButton";
 import "./schedule.css";
+import { useSchedulePaths } from "./paths";
 
-function GroupLink({ id }: { id: string }) {
+function GroupLink({ id, name, serverBacked }: { id: string; name?: string; serverBacked?: boolean }) {
   const [search] = useSearchParams();
-  return <Link to={`/student/schedule/groups/${id}?${search.toString()}`}>Группа {groups.find(g => g.id === id)?.name}</Link>;
+  const { base } = useSchedulePaths();
+  if (serverBacked) return <span>Группа {name}</span>;
+  return <Link to={`${base}/groups/${id}?${search.toString()}`}>Группа {groups.find(g => g.id === id)?.name}</Link>;
 }
 
 function ChangedValue({ changed, description, children }: {
@@ -42,7 +45,7 @@ export function ScheduleRow({ lesson, now, teacherView = false }: { lesson: Less
     if (changed.teacher) previous.push(change.teacher);
   }
   return (
-    <li className={`schedule-row${current ? " schedule-current" : ""}${change.status === "cancelled" ? " schedule-cancelled" : ""}${outcome === "passed" ? " schedule-passed" : outcome ? " schedule-unsuccessful" : ""}`}>
+    <li id={`lesson-${lesson.id}`} className={`schedule-row${current ? " schedule-current" : ""}${change.status === "cancelled" ? " schedule-cancelled" : ""}${outcome === "passed" ? " schedule-passed" : outcome ? " schedule-unsuccessful" : ""}`}>
       <p className="schedule-time">
         <ChangedValue changed={changed.time} description="Время изменено">
           <time dateTime={lesson.startsAt}>{formatTime(lesson.startsAt)}</time>
@@ -68,7 +71,7 @@ export function ScheduleRow({ lesson, now, teacherView = false }: { lesson: Less
         </span>
       </div>
       <div className="schedule-person">
-        {teacherView && event.groupId && <GroupLink id={event.groupId} />}
+        {teacherView && event.groupId && <GroupLink id={event.groupId} name={event.groupName} serverBacked={event.serverBacked} />}
         {!teacherView &&
           <p className="schedule-teacher">
             <UserRound aria-hidden="true" />

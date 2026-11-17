@@ -1,27 +1,35 @@
 import { useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
+import { useSchedulePaths } from "./paths";
+function useItems() {
+  const paths = useSchedulePaths();
+  const inSchedule = paths.pathname === paths.base || paths.pathname.startsWith(`${paths.base}/`);
+  const editing = paths.staff && paths.pathname === `${paths.base}/edit`;
+  return { ...paths, items: [
+    { to: paths.base, label: "Моё расписание", active: paths.pathname === paths.base },
+    { to: paths.catalog, label: "Все расписания", active: inSchedule && paths.pathname !== paths.base && !editing },
+    ...(paths.staff ? [{ to: `${paths.base}/edit`, label: "Редактировать расписание", active: editing }] : []),
+  ] };
+}
 export function ScheduleNavigation() {
-  const { pathname } = useLocation();
-  const active = pathname.startsWith("/student/schedule");
+  const { pathname, base, items } = useItems();
   const [open, setOpen] = useState(false);
   return <div className="schedule-nav-entry">
     <div className="schedule-nav-parent">
-      <NavLink to="/student/schedule" aria-current={pathname === "/student/schedule" ? "page" : false} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+      <NavLink to={base} aria-current={pathname === base ? "page" : false} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
         <CalendarDays aria-hidden="true" /><span>Расписание</span>
       </NavLink>
       <button type="button" aria-label="Подразделы расписания" aria-expanded={open} aria-controls="schedule-submenu" onClick={() => setOpen(value => !value)}><ChevronDown aria-hidden="true" /></button>
     </div>
     {open && <div id="schedule-submenu" className="schedule-submenu">
-      <Link to="/student/schedule" className={active && pathname === "/student/schedule" ? "active" : undefined} aria-current={active && pathname === "/student/schedule" ? "page" : undefined}>Моё расписание</Link>
-      <Link to="/student/schedule/catalog" className={active && pathname !== "/student/schedule" ? "active" : undefined} aria-current={active && pathname !== "/student/schedule" ? "page" : undefined}>Все расписания</Link>
+      {items.map(item => <Link key={item.to} to={item.to} className={item.active ? "active" : undefined} aria-current={item.active ? "page" : undefined}>{item.label}</Link>)}
     </div>}
   </div>;
 }
 export function ScheduleTabs() {
-  const { pathname } = useLocation();
-  return <div className="schedule-section-tabs" role="group" aria-label="Подразделы расписания">
-    <Link to="/student/schedule" aria-current={pathname === "/student/schedule" ? "page" : undefined}>Моё расписание</Link>
-    <Link to="/student/schedule/catalog" aria-current={pathname !== "/student/schedule" ? "page" : undefined}>Все расписания</Link>
+  const { staff, items } = useItems();
+  return <div className={`schedule-section-tabs${staff ? " schedule-teacher-tabs" : ""}`} role="group" aria-label="Подразделы расписания">
+    {items.map(item => <Link key={item.to} to={item.to} aria-current={item.active ? "page" : undefined}>{item.label}</Link>)}
   </div>;
 }

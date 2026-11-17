@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Brand, PrototypeNotice } from "../../shared/brand";
 import { api, ApiError, type Session } from "../../shared/api";
 import { useSession } from "../../shared/session";
+import { setTabLoginPending } from "./tabAccount";
 const destination = (s: Session | null | undefined) =>
   s?.areas.includes("student")
     ? "/student"
@@ -18,13 +19,14 @@ export function Login() {
   const [fields, setFields] = useState({ username: "", password: "" });
   const lock = useRef(false);
   const form = useRef<HTMLFormElement>(null);
-  const expired = useLocation().state?.expired;
+  const location = useLocation();
+  const expired = location.state?.expired;
   const navigate = useNavigate();
-  const { session, refresh, logout } = useSession();
+  const { session, accountChanged, refresh, logout } = useSession();
   useEffect(() => {
     const to = destination(session);
-    if (to && !expired) navigate(to, { replace: true });
-  }, [session, navigate, expired]);
+    if (to && !expired && !accountChanged) navigate(to, { replace: true });
+  }, [session, navigate, expired, accountChanged]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (lock.current) return;
@@ -50,10 +52,11 @@ export function Login() {
       return;
     }
     lock.current = true;
+    setTabLoginPending(true);
     setBusy(true);
     try {
       await api.login(username, password);
-      const current = await refresh();
+      const current = await refresh(true);
       const to = destination(current);
       if (to) navigate(to);
       else
@@ -69,6 +72,7 @@ export function Login() {
           : "Не удалось связаться с сервером. Попробуйте ещё раз",
       );
     } finally {
+      setTabLoginPending(false);
       lock.current = false;
       setBusy(false);
     }
@@ -79,7 +83,8 @@ export function Login() {
         <Brand />
         <form ref={form} onSubmit={submit} noValidate aria-busy={busy}>
           <h1>Вход в кабинет</h1>
-          {expired && <p role="status">Сеанс завершён. Войдите снова</p>}
+          {accountChanged ? <p role="status">Учётная запись в другой вкладке изменена или выполнен выход. Войдите снова.</p>
+            : expired && <p role="status">Сеанс завершён. Войдите снова</p>}
           <div className="field">
             <label htmlFor="username">Логин</label>
             <p id="username-hint" className="muted">

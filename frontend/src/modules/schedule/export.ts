@@ -40,7 +40,7 @@ function excelTime(instant: string) {
 
 export async function buildScheduleXlsx(schedule: ScheduleExport): Promise<ScheduleFile> {
   const { entity, category, mode, start, end, now } = schedule;
-  const name = entity.kind === "group" ? groups.find(g => g.id === entity.id)?.name : teachers.find(t => t.id === entity.id)?.name;
+  const name = entity.name ?? (entity.kind === "group" ? groups.find(g => g.id === entity.id)?.name : teachers.find(t => t.id === entity.id)?.name);
   if (!name) throw new Error("Unknown schedule entity");
   const title = entity.kind === "group" ? `Расписание группы ${name}` : `Расписание преподавателя: ${name}`;
   const period = category === "assessment" ? "Контрольные и экзамены за семестр" : mode === "today" ? "Занятия на сегодня" : "Занятия на выбранную неделю";
@@ -49,7 +49,10 @@ export async function buildScheduleXlsx(schedule: ScheduleExport): Promise<Sched
   workbook.creator = "Деканат";
   workbook.created = now;
   workbook.title = title;
-  workbook.subject = `${period}: ${range}. Демонстрационные данные`;
+  const origin = entity.personal
+    ? entity.isDemo ? "Демонстрационные данные — сохранены на сервере для учебного профиля." : entity.kind === "teacher" ? "Расписание преподавателя. Данные с сервера." : "Расписание учебной группы. Данные с сервера."
+    : "Демонстрационные данные — не связаны с вашим профилем.";
+  workbook.subject = `${period}: ${range}. ${origin}`;
   const sheet = workbook.addWorksheet("Расписание", {
     views: [{ state: "frozen", xSplit: 3, ySplit: 6, showGridLines: false }],
     pageSetup: { orientation: "landscape", paperSize: 9, printTitlesRow: "1:6" },
@@ -57,7 +60,7 @@ export async function buildScheduleXlsx(schedule: ScheduleExport): Promise<Sched
   const headers = ["День недели и дата", "Начало", "Окончание", "Название", "Вид занятия", "Место проведения", "Преподаватель", "Группа", "Статус", "Было до переноса"];
   const widths = [32, 11, 13, 36, 24, 42, 32, 14, 20, 48];
   sheet.columns = widths.map(width => ({ width }));
-  for (const [index, text] of [title, `${period}: ${range}`, "Демонстрационные данные — не связаны с вашим профилем.", `Московское время · UTC+3. Состояние на ${dateLabel(dateKey(now))}, ${formatTime(now.toISOString())}.`].entries()) {
+  for (const [index, text] of [title, `${period}: ${range}`, origin, `Московское время · UTC+3. Состояние на ${dateLabel(dateKey(now))}, ${formatTime(now.toISOString())}.`].entries()) {
     sheet.mergeCells(index + 1, 1, index + 1, headers.length);
     const cell = sheet.getCell(index + 1, 1);
     cell.value = text;
@@ -90,7 +93,7 @@ export async function buildScheduleXlsx(schedule: ScheduleExport): Promise<Sched
     const row = sheet.addRow([
       excelDate(event.startsAt), excelTime(event.startsAt), excelTime(event.endsAt),
       event.title, event.kind, place(event), event.teacher,
-      groups.find(g => g.id === event.groupId)?.name ?? event.groupId,
+      event.groupName ?? groups.find(g => g.id === event.groupId)?.name ?? event.groupId,
       statuses.join("\n"), previousValues(event) || null,
     ]);
     row.eachCell({ includeEmpty: true }, (cell, column) => {

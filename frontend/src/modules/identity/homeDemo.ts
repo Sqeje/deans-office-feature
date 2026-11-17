@@ -1,7 +1,7 @@
 export interface HomeDemoSnapshot {
   asOf: string;
   timeZone: string;
-  lesson: { id: string; title: string; startsAt: string; room: string } | null;
+  lesson: { id: string; title: string; startsAt: string; room: string; href?: string } | null;
   event: { title: string; deadline: string } | null;
   performance: { average: number; maximum: number; passed: number } | null;
   request: {

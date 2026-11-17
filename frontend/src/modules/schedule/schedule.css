@@ -466,3 +466,22 @@
   box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 3px var(--color-primary);
 }
 .schedule-calendar-week > span { align-self: center; }
+
+.schedule-row:target { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.schedule-staff-controls, .schedule-edit-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 20px 0; }
+.schedule-staff label { display: grid; gap: 8px; min-width: 0; }
+.schedule-staff input:not([type="checkbox"]), .schedule-staff select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-control-border); border-radius: 10px; background: var(--color-surface-raised); font: inherit; }
+.schedule-staff-list, .schedule-edit-fields { display: grid; gap: 16px; }
+.schedule-staff-list > article > p { margin: 12px 0; }
+.schedule-staff-list > article > button { margin-top: 16px; }
+.schedule-edit { margin-top: 24px; }
+.schedule-edit fieldset { border: 0; padding: 0; margin: 16px 0 0; min-width: 0; }
+.schedule-staff .schedule-cancel-check { display: flex; align-items: center; gap: 12px; min-height: 44px; margin-top: 16px; }
+.schedule-cancel-check input { width: 20px; height: 20px; }
+.schedule-edit [role="alert"] { color: var(--color-danger); margin: 12px 0; }
+@media (min-width: 768px) { .schedule-edit-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.schedule-section-tabs.schedule-teacher-tabs { display: flex; flex-wrap: wrap; }
+.schedule-teacher-tabs > a { flex: 1 1 150px; display: flex; align-items: center; justify-content: center; text-align: center; border: 1px solid var(--color-control-border); }
+.schedule-staff input[readonly] { color: var(--color-text-muted); background: var(--color-canvas); }
+.schedule-staff input:disabled { color: var(--color-disabled-text); background: var(--color-disabled-bg); }

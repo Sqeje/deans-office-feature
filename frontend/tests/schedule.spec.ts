@@ -11,8 +11,12 @@ async function session(page: BrowserPage) {
   await page.route("**/api/identity/session", route => route.fulfill({ json: {
     userId: "demo", universityId: "demo", displayName: "Алексей Примеров", roles: ["Student"], studentId: "demo", permissions: [], areas: ["student"],
   } }));
+  await page.route("**/api/schedule/context", r => r.fulfill({ json: { groupId: "personal", groupName: "ПИ-21", timeZone: "Europe/Moscow", isDemo: true } }));
+  await page.route("**/api/schedule/mine?*", r => r.fulfill({ json: { groupId: "personal", groupName: "ПИ-21", timeZone: "Europe/Moscow", isDemo: true, events: [] } }));
+  await page.route("**/api/schedule/next", r => r.fulfill({ json: { event: null, timeZone: "Europe/Moscow" } }));
 }
 async function openSchedule(page: BrowserPage, path = "/student/schedule", instant = wednesday) {
+  if (path === "/student/schedule" || path.startsWith("/student/schedule?")) path = path.replace("/student/schedule", "/student/schedule/groups/pi-21");
   await session(page);
   await page.clock.install({ time: new Date(instant) });
   await page.clock.pauseAt(new Date(instant));
@@ -73,7 +77,7 @@ test("canonical source shares group events with teachers and respects semester a
 
 test("today, full week, changes, Sunday and history", async ({ page }) => {
   await openSchedule(page);
-  await expect(page.getByRole("heading", { name: "Моё расписание", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Расписание группы ПИ-21", exact: true })).toBeVisible();
   await expect(page.locator(".schedule-row")).toHaveCount(3);
   await expect(page.getByText("Сейчас", { exact: true })).toHaveCount(1);
   await expect(page.getByText("Перенесено", { exact: true })).toHaveCount(1);
@@ -97,7 +101,7 @@ test("today, full week, changes, Sunday and history", async ({ page }) => {
   await expect(page.locator(".schedule-day-title time")).toHaveAttribute("datetime", "2026-11-11");
 });
 
-test("catalog hierarchy and own group canonical route", async ({ page }) => {
+test("catalog hierarchy keeps demo groups separate from the personal server schedule", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openSchedule(page, "/student/schedule/catalog");
   await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();
@@ -110,14 +114,14 @@ test("catalog hierarchy and own group canonical route", async ({ page }) => {
   await expect(page.locator(".schedule-row")).toHaveCount(1);
   await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "2024", exact: true }).click();
   await page.getByRole("link", { name: "ПИ-21", exact: true }).click();
-  await expect(page).toHaveURL(/\/student\/schedule$/);
-  await expect(nav(page).getByRole("link", { name: "Моё расписание", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveURL(/\/student\/schedule\/groups\/pi-21$/);
+  await expect(nav(page).getByRole("link", { name: "Все расписания", exact: true })).toHaveAttribute("aria-current", "page");
   for (const group of groups.filter(g => g.id !== "pi-21")) {
     await page.goto(`/student/schedule/groups/${group.id}`);
     await expect(page.getByRole("heading", { name: `Расписание группы ${group.name}` })).toBeVisible();
   }
   await page.goto("/student/schedule/groups/pi-21?view=week");
-  await expect(page).toHaveURL(/\/student\/schedule\?view=week$/);
+  await expect(page).toHaveURL(/\/student\/schedule\/groups\/pi-21\?view=week$/);
 });
 
 test("teacher search handles case, initials, no results, empty input and history", async ({ page }) => {
@@ -150,7 +154,7 @@ test("teacher card opens first, Escape restores focus; teacher week shows multip
   expect(card!.x + card!.width).toBeLessThanOrEqual(360);
   await page.getByRole("group", { name: "Карточка: Иван Викторович Лебедев" }).screenshot({ path: "test-results/schedule-teacher-card-mobile.png", animations: "disabled" });
   await page.keyboard.press("Escape"); await expect(teacher).toBeFocused();
-  await teacher.click(); await page.getByRole("heading", { name: "Моё расписание" }).click();
+  await teacher.click(); await page.getByRole("heading", { name: "Расписание группы ПИ-21" }).click();
   await expect(page.getByRole("group", { name: /Карточка:/ })).toHaveCount(0);
   await teacher.click(); await page.getByRole("link", { name: "Посмотреть расписание →" }).click();
   await expect(page.getByRole("heading", { name: "Иван Викторович Лебедев", exact: true })).toBeVisible();
@@ -185,7 +189,7 @@ test("midnight, minute ticks, timezone and malformed query keep real Moscow date
   const context = await browser.newContext({ timezoneId: "America/Los_Angeles" });
   const page = await context.newPage();
   await openSchedule(page, "/student/schedule?kind=bad&view=oops&week=2026-02-31", "2026-11-11T13:39:00+03:00");
-  await expect(page).toHaveURL(/\/student\/schedule$/);
+  await expect(page).toHaveURL(/\/student\/schedule\/groups\/pi-21$/);
   await expect(page.getByText("Сейчас", { exact: true })).toHaveCount(1);
   await page.clock.runFor(60_000); await expect(page.getByText("Сейчас", { exact: true })).toHaveCount(0);
   await page.clock.setSystemTime(new Date("2026-11-12T00:01:00+03:00"));
@@ -266,7 +270,7 @@ for (const width of [360, 390, 768, 1024, 1280, 1440]) {
     if (width < 1024) await expect(nav(page).getByRole("link")).toHaveCount(5);
     else {
       await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();
-      await expect(nav(page).getByRole("link", { name: "Моё расписание", exact: true })).toHaveAttribute("aria-current", "page");
+      await expect(nav(page).getByRole("link", { name: "Все расписания", exact: true })).toHaveAttribute("aria-current", "page");
       await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();
       await expect(nav(page).getByRole("link", { name: "Моё расписание", exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();
@@ -335,7 +339,7 @@ test("anonymous access and real login through existing home link", async ({ page
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await page.getByRole("link", { name: "Перейти в расписание" }).click();
   await expect(page.getByRole("heading", { name: "Моё расписание", exact: true })).toBeVisible();
-  await page.reload(); await expect(page.getByText(/Демонстрационные данные — не связаны с вашим профилем/)).toBeVisible();
+  await page.reload(); await expect(page.getByText(/Демонстрационное расписание — сохранено на сервере/)).toBeVisible();
 });
 test("only actual changed fields are selected, comparing instants rather than offset strings", () => {
   const previous = { status: "rescheduled" as const, startsAt: sample.startsAt, endsAt: sample.endsAt, room: sample.room, teacher: sample.teacher };
@@ -421,6 +425,7 @@ test("assessment outcome appears at end, honours failed/absent and never marks f
   expect(assessmentOutcome({ ...event, assessmentResult: "failed" }, new Date(event.endsAt))).toBe("failed");
   expect(assessmentOutcome({ ...event, change: { status: "cancelled" } }, new Date(event.endsAt))).toBeNull();
   expect(assessmentOutcome(sample, new Date(sample.endsAt))).toBeNull();
+  expect(assessmentOutcome({ ...event, serverBacked: true }, new Date(event.endsAt))).toBeNull();
 });
 
 test("only the arrow opens navigation and subitems include the arrow column", async ({ page }) => {
@@ -473,7 +478,7 @@ for (const width of [360, 1280]) {
     await page.reload(); await expect(page.locator(".schedule-day-title time").first()).toHaveAttribute("datetime", "2027-01-04");
     await trigger.click(); await page.keyboard.press("Escape");
     await expect(calendar).toHaveCount(0); await expect(trigger).toBeFocused();
-    await trigger.click(); await page.getByRole("heading", { name: "Моё расписание", exact: true }).click();
+    await trigger.click(); await page.getByRole("heading", { name: "Расписание группы ПИ-21", exact: true }).click();
     await expect(calendar).toHaveCount(0);
     await trigger.click(); await calendar.getByRole("button", { name: "Следующий месяц", exact: true }).click();
     await expect(calendar.getByLabel("Месяц", { exact: true })).toHaveValue("02");

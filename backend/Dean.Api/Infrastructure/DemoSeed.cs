@@ -1,5 +1,6 @@
 using Dean.Api.Modules.Identity;
 using Dean.Api.Kernel.Security;
+using Dean.Api.Modules.Schedule;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 namespace Dean.Api.Infrastructure;
@@ -33,15 +34,21 @@ public static class DemoSeed
             {
                 Id = groupId,
                 UniversityId = universityId,
-                Name = "ЦД-101"
+                Name = "ПИ-21"
             });
             await db.SaveChangesAsync();
         }
+        var firstGroup = await db.StudyGroups.SingleAsync(g => g.Id == groupId && g.UniversityId == universityId);
+        if (firstGroup.Name == "ЦД-101") firstGroup.Name = "ПИ-21";
+        if (!await db.StudyGroups.AnyAsync(g => g.Id == ScheduleDemo.SecondGroup))
+            db.StudyGroups.Add(new() { Id = ScheduleDemo.SecondGroup, UniversityId = universityId, Name = "ПИ-22" });
+        await db.SaveChangesAsync();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         foreach (var role in new[] { "Student", "Staff" })
         if (!await roles.RoleExistsAsync(role))
             Check(await roles.CreateAsync(new(role)));
+        string? teacherId = null;
         for (var i = 0; i < 3; i++)
         {
             var email = i < 2 ? $"student{i + 1}@demo.invalid" : "staff@demo.invalid";
@@ -57,23 +64,35 @@ public static class DemoSeed
                     {
                         0 => "Алексей Примеров",
                         1 => "Мария Образцова",
-                        _ => "Сотрудник Демонстрационный"
+                        _ => "Иван Викторович Лебедев"
                     }
                 };
                 Check(await users.CreateAsync(user, passwords[i]!));
             }
             if (user.UniversityId != universityId)
                 throw new InvalidOperationException("Demo account university mismatch.");
+            if (i == 2)
+            {
+                teacherId = user.Id;
+                if (user.DisplayName == "Сотрудник Демонстрационный") user.DisplayName = "Иван Викторович Лебедев";
+                if (!await db.StaffGrants.AnyAsync(g => g.UserId == user.Id && g.UniversityId == universityId && g.Permission == Permissions.ScheduleWrite && g.GroupId == ScheduleDemo.SecondGroup))
+                    db.StaffGrants.Add(new() { Id = Guid.NewGuid(), UserId = user.Id, UniversityId = universityId, Permission = Permissions.ScheduleWrite, GroupId = ScheduleDemo.SecondGroup });
+            }
             var role = i < 2 ? "Student" : "Staff";
             if (!await users.IsInRoleAsync(user, role))
                 Check(await users.AddToRoleAsync(user, role));
-            if (i < 2 && !await db.StudentProfiles.AnyAsync(x => x.UserId == user.Id))
-                db.StudentProfiles.Add(new()
+            if (i < 2)
+            {
+                var targetGroup = i == 0 ? groupId : ScheduleDemo.SecondGroup;
+                var profile = await db.StudentProfiles.SingleOrDefaultAsync(x => x.UserId == user.Id && x.UniversityId == universityId);
+                if (profile is null) db.StudentProfiles.Add(new()
                 {
                     UserId = user.Id,
                     UniversityId = universityId,
-                    StudyGroupId = groupId
+                    StudyGroupId = targetGroup
                 });
+                else if (i == 1 && profile.StudyGroupId == groupId) profile.StudyGroupId = targetGroup;
+            }
             if (i == 2)
                 foreach (var permission in Permissions.All)
                 {
@@ -90,6 +109,7 @@ public static class DemoSeed
                 }
             await db.SaveChangesAsync();
         }
+        await scope.ServiceProvider.GetRequiredService<ScheduleDemo>().Initialize(teacherId!);
     }
     private static void Check(IdentityResult result)
     {

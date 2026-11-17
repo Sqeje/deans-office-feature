@@ -1,5 +1,6 @@
 import createClient from "openapi-fetch";
 import type { paths, components } from "./schema";
+import { accountHeader, invalidateTabAccount, tabAccount, tabLoginPending } from "../modules/identity/tabAccount";
 export type Profile = components["schemas"]["ProfileResponse"];
 export type Session = components["schemas"]["SessionResponse"];
 export class ApiError extends Error {
@@ -15,7 +16,24 @@ export const client = createClient<paths>({
   baseUrl: "",
   credentials: "same-origin",
 });
-async function check(response: Response, problem?: unknown) {
+client.use({
+  onRequest({ request }) {
+    const path = new URL(request.url).pathname;
+    // Only explicit login and its follow-up session read may adopt another account.
+    if (path === "/api/identity/login" || path === "/api/identity/csrf" || request.headers.get(accountHeader) === "") return request;
+    const binding = tabAccount();
+    if (binding.blocked) throw new ApiError(401, "account_changed");
+    if (binding.userId) request.headers.set(accountHeader, binding.userId);
+    return request;
+  },
+  onResponse({ request, response }) {
+    const expected = request.headers.get(accountHeader);
+    // An old response must not invalidate a subsequently completed login in this tab.
+    if (response.status === 401 && expected && expected === tabAccount().userId && !tabLoginPending()) invalidateTabAccount();
+    return response;
+  },
+});
+export async function check(response: Response, problem?: unknown) {
   if (response.ok) return;
   const value =
     problem ??
@@ -30,15 +48,17 @@ async function check(response: Response, problem?: unknown) {
     typeof p.traceId === "string" ? p.traceId : undefined,
   );
 }
-async function csrf() {
+export async function csrf() {
   const { data, response, error } = await client.GET("/api/identity/csrf");
   await check(response, error);
   if (!data) throw new Error("CSRF unavailable");
   return { "X-CSRF-TOKEN": data.token };
 }
 export const api = {
-  async session(): Promise<Session | null> {
-    const { data, response, error } = await client.GET("/api/identity/session");
+  async session(afterLogin = false): Promise<Session | null> {
+    const { data, response, error } = await client.GET("/api/identity/session", {
+      headers: afterLogin ? { [accountHeader]: "" } : undefined,
+    });
     if (response.status === 401) return null;
     await check(response, error);
     return data!;

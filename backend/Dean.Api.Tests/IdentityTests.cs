@@ -65,6 +65,18 @@ public sealed class IdentityTests
         Assert.Equal(HttpStatusCode.Unauthorized, (await a.GetAsync("/api/identity/me")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/api/identity/me")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/health")).StatusCode);
+        // A stale tab must neither read the replacement account nor log it out.
+        b.DefaultRequestHeaders.Add("X-Dean-Account", first.Id);
+        var mismatch = await b.GetAsync("/api/identity/session");
+        Assert.Equal(HttpStatusCode.Unauthorized, mismatch.StatusCode);
+        Assert.Contains("account_changed", await mismatch.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await b.GetAsync("/api/identity/me")).StatusCode);
+        await Csrf(b);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await b.PostAsync("/api/identity/logout", null)).StatusCode);
+        b.DefaultRequestHeaders.Remove("X-Dean-Account");
+        b.DefaultRequestHeaders.Add("X-Dean-Account", second.Id);
+        Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/api/identity/session")).StatusCode);
+        Assert.Equal(second.Id, (await b.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!.Id);
         using var staff = factory.CreateClient();
         await Csrf(staff);
         Assert.Equal(HttpStatusCode.NoContent, (await staff.PostAsJsonAsync("/api/identity/login", new LoginRequest("staff@demo.invalid", staffPassword))).StatusCode);
