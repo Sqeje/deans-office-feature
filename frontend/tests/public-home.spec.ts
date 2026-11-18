@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+﻿import { test, expect } from "./test";
 
 test("public home works without API and offers honest public paths", async ({
   page,

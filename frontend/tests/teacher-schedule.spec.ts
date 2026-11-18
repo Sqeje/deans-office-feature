@@ -1,0 +1,72 @@
+import { test, expect, type Page } from "./test";
+import ExcelJS from "exceljs";
+import { dateKey, weekOf } from "../src/modules/schedule/model";
+
+async function login(page: Page) {
+  if (!process.env.DEMO_STAFF_PASSWORD) throw new Error("Set DEMO_STAFF_PASSWORD");
+  await page.goto("/login");
+  await page.getByLabel("Электронная почта").fill("staff@demo.invalid");
+  await page.getByLabel("Пароль", { exact: true }).fill(process.env.DEMO_STAFF_PASSWORD);
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff$/);
+  await page.getByRole("navigation", { name: "Разделы", exact: true }).getByRole("link", { name: "Расписание", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff\/schedule$/);
+}
+for (const width of [360, 1280]) test(`teacher own schedule, shared catalog, restricted editor and XLSX ${width}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 950 });
+  await login(page);
+  const tabs = page.getByRole("group", { name: "Подразделы расписания", exact: true });
+  await expect(tabs.getByRole("link")).toHaveCount(3);
+  await expect(tabs.getByRole("link", { name: "Моё расписание", exact: true })).toHaveAttribute("aria-current", "page");
+  const context = await (await page.request.get("/api/schedule/teacher/context")).json();
+  const monday = weekOf(dateKey(new Date()))[0];
+  const events = await (await page.request.get(`/api/schedule/teacher/mine?start=${monday}&end=${weekOf(monday)[6]}&category=lesson`)).json();
+  expect(context.teacherName).toBe("Иван Викторович Лебедев");
+  expect(events.events).toHaveLength(12);
+  expect(new Set(events.events.map((e: any) => e.groupId)).size).toBe(2);
+  await page.getByRole("button", { name: "Неделя", exact: true }).click();
+  await expect(page.locator(".schedule-row")).toHaveCount(12);
+  await expect(page.getByRole("heading", { name: "Моё расписание", exact: true })).toBeVisible();
+  for (const groupName of new Set<string>(events.events.map((e: any) => e.groupName))) {
+    await expect(page.getByText(`Группа ${groupName}`, { exact: true })).toHaveCount(6);
+  }
+  await expect(page.getByText("Группа ПИ-22", { exact: true })).toHaveCount(6);
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Сохранить на устройство", exact: true }).click();
+  const file = await pending;
+  const book = new ExcelJS.Workbook(); await book.xlsx.readFile((await file.path())!);
+  const sheet = book.worksheets[0];
+  expect(sheet.getCell("A1").text).toContain("Иван Викторович Лебедев");
+  expect(sheet.rowCount - 6).toBe(12);
+  await file.saveAs(testInfo.outputPath("teacher-week.xlsx"));
+  await page.screenshot({ path: testInfo.outputPath("my-teacher-week.png"), fullPage: true });
+  await tabs.getByRole("link", { name: "Все расписания", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff\/schedule\/catalog$/);
+  await page.getByRole("link", { name: "Информатика и вычислительная техника", exact: true }).click();
+  await page.getByRole("link", { name: "Прикладная информатика", exact: true }).click();
+  await page.getByRole("link", { name: "2024", exact: true }).click();
+  await page.getByRole("link", { name: "ПИ-21", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff\/schedule\/groups\/pi-21$/);
+  await expect(page.getByRole("heading", { name: "Расписание группы ПИ-21" })).toBeVisible();
+  await tabs.getByRole("link", { name: "Все расписания", exact: true }).click();
+  await page.getByRole("textbox", { name: "Поиск преподавателя" }).fill("Орлова");
+  await page.getByRole("button", { name: "Найти", exact: true }).click();
+  await page.locator(".schedule-search").getByRole("link", { name: "М. П. Орлова", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff\/schedule\/teachers\/orlova/);
+  await expect(page.getByRole("heading", { name: "Мария Павловна Орлова", exact: true })).toBeVisible();
+  await tabs.getByRole("link", { name: "Редактировать расписание", exact: true }).click();
+  await expect(page).toHaveURL(/\/staff\/schedule\/edit$/);
+  await expect(page.getByRole("heading", { name: "Редактировать расписание", exact: true })).toBeVisible();
+  await expect(page.locator(".schedule-staff-list article")).toHaveCount(12);
+  await expect(page.getByText("Дискретная математика", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Изменить занятие", exact: true }).first().click();
+  const form = page.getByRole("form", { name: "Изменение занятия" });
+  await expect(form.getByLabel("Преподаватель", { exact: true })).toHaveAttribute("readonly", "");
+  await expect(form.getByLabel("Аудитория", { exact: true })).toBeEditable();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await form.screenshot({ path: testInfo.outputPath("own-event-form.png") });
+  await form.getByRole("button", { name: "Отмена", exact: true }).click();
+  await tabs.getByRole("link", { name: "Моё расписание", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Моё расписание", exact: true })).toBeVisible();
+});

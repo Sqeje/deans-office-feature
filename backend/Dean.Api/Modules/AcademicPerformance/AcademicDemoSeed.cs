@@ -33,6 +33,7 @@ public static class AcademicDemoSeed
         {
             var email = $"student{i}@demo.invalid";
             var studentId = await db.Users.Where(x => x.UniversityId == universityId && x.Email == email).Select(x => x.Id).SingleAsync();
+            if (!await db.StudentProfiles.AnyAsync(p => p.UserId == studentId && p.UniversityId == universityId && p.StudyGroupId == groupId)) continue;
             foreach (var course in courses)
             {
                 // Never overwrite a result entered by staff, even after rerunning initialization.

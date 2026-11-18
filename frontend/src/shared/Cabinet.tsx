@@ -61,6 +61,7 @@ function CabinetContent({ area }: { area: Area }) {
   const logoutError = failed ? (
     <p role="alert" className="field-error">Не удалось выйти. Попробуйте ещё раз.</p>
   ) : null;
+  const [navigationVersion, setNavigationVersion] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -93,9 +94,9 @@ function CabinetContent({ area }: { area: Area }) {
       document.removeEventListener("pointerdown", outside);
     };
   }, [open]);
+  if (session === null) return <Navigate to="/login" replace />;
   if (error) return <ErrorState />;
   if (session === undefined) return <Loading />;
-  if (session === null) return <Navigate to="/login" replace />;
   if (!session.areas.includes(area))
     return (
       <main className="p-6">
@@ -139,7 +140,7 @@ function CabinetContent({ area }: { area: Area }) {
       </a>
       <header className="cabinet-header">
         <div className="cabinet-brand">
-          <Brand to={"/" + area} />
+          <Brand to={"/" + area} onClick={() => setNavigationVersion(value => value + 1)} />
           {area === "student" && <p>Студенческий портал</p>}
         </div>
         <div className="profile-control">
@@ -187,12 +188,18 @@ function CabinetContent({ area }: { area: Area }) {
           {pages
             .filter((p) => area !== "student" || p.path !== "profile")
             .map((p) => {
-              const Icon = icons[p.path] ?? FileText;
+              if (p.Navigation) {
+                const Navigation = p.Navigation;
+                // Activating the brand also resets navigation when already on home.
+                return <Navigation key={`${p.path}:${navigationVersion}`} />;
+              }
+              const path = p.navigationPath ?? p.path;
+              const Icon = icons[path] ?? FileText;
               return (
                 <NavLink
                   end={p.path === ""}
                   key={p.path}
-                  to={"/" + area + (p.path ? "/" + p.path : "")}
+                  to={"/" + area + (path ? "/" + path : "")}
                   className={({ isActive }) =>
                     isActive ? "nav-link active" : "nav-link"
                   }

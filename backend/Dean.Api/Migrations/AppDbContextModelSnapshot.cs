@@ -957,6 +957,150 @@ namespace Dean.Api.Migrations
                 {
                     b.Navigation("History");
                 });
+            modelBuilder.Entity("Dean.Api.Modules.Schedule.ScheduleEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Building")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Floor")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ImportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDemo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("PreviousAddress")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("PreviousBuilding")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("PreviousEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PreviousFloor")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PreviousRoom")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("PreviousStartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PreviousTeacher")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Room")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Teacher")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("TeacherUserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId", "UniversityId");
+
+                    b.HasIndex("TeacherUserId", "UniversityId");
+
+                    b.HasIndex("UniversityId", "SourceId", "ExternalId")
+                        .IsUnique();
+
+                    b.HasIndex("UniversityId", "TeacherUserId", "StartsAt");
+
+                    b.HasIndex("UniversityId", "GroupId", "Category", "StartsAt");
+
+                    b.ToTable("ScheduleEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Schedule_Interval", "\"EndsAt\" > \"StartsAt\"");
+
+                            t.HasCheckConstraint("CK_Schedule_Previous", "\"Status\" <> 1 OR (\"PreviousStartsAt\" IS NOT NULL AND \"PreviousEndsAt\" IS NOT NULL AND \"PreviousEndsAt\" > \"PreviousStartsAt\" AND \"PreviousRoom\" IS NOT NULL AND \"PreviousTeacher\" IS NOT NULL AND \"PreviousAddress\" IS NOT NULL AND \"PreviousBuilding\" IS NOT NULL AND \"PreviousFloor\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Schedule_Source", "(\"SourceId\" IS NULL AND \"ExternalId\" IS NULL AND \"ImportedAt\" IS NULL) OR (\"SourceId\" IS NOT NULL AND \"ExternalId\" IS NOT NULL AND \"ImportedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Schedule_Status", "\"Status\" IN (0,1,2) AND \"Category\" IN (0,1)");
+                        });
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.Schedule.ScheduleEntry", b =>
+                {
+                    b.HasOne("Dean.Api.Modules.Identity.StudyGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId", "UniversityId")
+                        .HasPrincipalKey("Id", "UniversityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Dean.Api.Modules.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherUserId", "UniversityId")
+                        .HasPrincipalKey("Id", "UniversityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
 #pragma warning restore 612, 618
         }
     }

@@ -1,8 +1,12 @@
 import { mockRequests } from './requests-http';
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 import { mockPerformance } from "./performance-http";
 test.beforeEach(async ({ page }) => {
   await mockPerformance(page); await mockRequests(page);
+  await page.route("**/api/notifications/student", r => r.fulfill({ json: { items: [], unreadCount: 0 } }));
+  await page.route("**/api/schedule/next", r => r.fulfill({ json: { timeZone: "Europe/Moscow", event: {
+    id: "demo-lesson", title: "Программирование", startsAt: "2026-11-09T12:10:00+03:00", room: "Ауд. 305", kind: "Лекция", groupName: "ПИ-21",
+  } } }));
 });
 test("login validates locally and password toggle never submits", async ({
   page,
@@ -92,12 +96,12 @@ for (const width of [360, 390, 768, 1024, 1280, 1440])
     );
     await page.goto("/student");
     await expect(
-      page.getByText("Группа ПИ-21", { exact: false }),
+      page.getByText("Демонстрационный университет · Группа ПИ-21", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Демонстрационные данные — не связаны", { exact: false }),
     ).toBeVisible();
-    await expect(page.getByRole("navigation").getByRole("link")).toHaveCount(5);
+    await expect(page.getByRole("navigation", { name: "Разделы", exact: true }).locator(".nav-link")).toHaveCount(5);
     await page.evaluate(() => document.fonts.ready);
     expect(
       await page.evaluate(() =>
@@ -350,6 +354,6 @@ test("empty summaries never invent grades and partial errors preserve other card
   ).toBeVisible();
   await host.getByRole("button", { name: "Повторить" }).click();
   await expect(
-    host.getByText("Сегодня занятий нет", { exact: true }),
+    host.getByText("Ближайших занятий нет", { exact: true }),
   ).toBeVisible();
 });

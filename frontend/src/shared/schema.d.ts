@@ -200,6 +200,269 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/schedule/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleContextDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    start: string;
+                    end: string;
+                    category: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NextEventDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/teacher/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeacherContextDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/teacher/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    start: string;
+                    end: string;
+                    category: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeacherScheduleDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    start: string;
+                    end: string;
+                    category: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateEventRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications/student": {
         parameters: {
             query?: never;
@@ -1036,6 +1299,34 @@ export interface components {
             debtReason: null | string;
             isLocal: boolean;
         };
+        /** @enum {unknown} */
+        EventCategory: "lesson" | "assessment";
+        EventDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
+            title: string;
+            kind: string;
+            category: components["schemas"]["EventCategory"];
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            room: string;
+            teacher: string;
+            location: components["schemas"]["PlaceDto"];
+            status: components["schemas"]["EventStatus"];
+            previous: null | components["schemas"]["PreviousDto"];
+            isImported: boolean;
+            isDemo: boolean;
+            /** Format: int64 */
+            version: number | string;
+            canEdit: boolean;
+        };
+        /** @enum {unknown} */
+        EventStatus: "scheduled" | "rescheduled" | "cancelled";
         FinalDto: {
             kind: components["schemas"]["FinalKind"];
             /** Format: int32 */
@@ -1053,6 +1344,10 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+        };
+        NextEventDto: {
+            event: null | components["schemas"]["EventDto"];
+            timeZone: string;
         };
         NextExamDto: {
             /** Format: uuid */
@@ -1105,6 +1400,21 @@ export interface components {
             /** Format: uuid */
             groupId: null | string;
         };
+        PlaceDto: {
+            address: string;
+            building: string;
+            /** Format: int32 */
+            floor: number | string;
+        };
+        PreviousDto: {
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            room: string;
+            teacher: string;
+            location: components["schemas"]["PlaceDto"];
+        };
         ProfileResponse: {
             id: string;
             fullName: string;
@@ -1155,6 +1465,21 @@ export interface components {
             /** Format: int32 */
             value: null | number | string;
         };
+        ScheduleContextDto: {
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
+            timeZone: string;
+            isDemo: boolean;
+        };
+        ScheduleDto: {
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
+            timeZone: string;
+            isDemo: boolean;
+            events: components["schemas"]["EventDto"][];
+        };
         SemesterDto: {
             id: string;
             label: string;
@@ -1172,6 +1497,34 @@ export interface components {
             studentId: null | string;
             permissions: components["schemas"]["PermissionGrantResponse"][];
             areas: string[];
+        };
+        TeacherContextDto: {
+            teacherId: string;
+            teacherName: string;
+            timeZone: string;
+            isDemo: boolean;
+        };
+        TeacherScheduleDto: {
+            teacherId: string;
+            teacherName: string;
+            timeZone: string;
+            isDemo: boolean;
+            events: components["schemas"]["EventDto"][];
+        };
+        UpdateEventRequest: {
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            room: string;
+            teacher: string;
+            address: string;
+            building: string;
+            /** Format: int32 */
+            floor: number | string;
+            cancelled: boolean;
+            /** Format: int64 */
+            version: number | string;
         };
     };
     responses: never;

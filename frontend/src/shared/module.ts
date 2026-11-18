@@ -6,6 +6,8 @@ export interface ModulePage {
   path: string;
   title: string;
   Page: ComponentType;
+  navigationPath?: string;
+  Navigation?: ComponentType;
   permission?: components["schemas"]["PermissionCode"];
 }
 export interface FrontendModule {

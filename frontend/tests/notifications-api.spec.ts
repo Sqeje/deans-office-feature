@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './test';
 async function login(page: Page, account: 'student1' | 'student2' | 'staff') {
   const password = process.env[account === 'staff' ? 'DEMO_STAFF_PASSWORD' : account === 'student1' ? 'DEMO_PASSWORD1' : 'DEMO_PASSWORD2'];
   if (!password) throw new Error('Demo password required');

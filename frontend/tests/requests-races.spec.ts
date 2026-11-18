@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test';
 import { mockRequests } from './requests-http';
 import { requestExamples } from '../src/modules/requests/demo';
 test('lost create response retains operation key across reload and retry',async({page})=>{

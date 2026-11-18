@@ -7,6 +7,7 @@ public sealed class IdentityModule : IAppModule
     public void AddServices(IServiceCollection services, IConfiguration config)
     {
         services.AddScoped<IStudentDirectory, StudentDirectory>();
+        services.AddScoped<IGroupDirectory, GroupDirectory>();
     }
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapIdentityModule();
 }

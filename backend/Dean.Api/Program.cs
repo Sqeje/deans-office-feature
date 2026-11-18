@@ -55,6 +55,7 @@ if (args.Contains("--initialize")) { await DemoSeed.Run(app.Services, app.Config
 app.UseForwardedHeaders();
 app.UseKernelHttp();
 app.UseAuthentication();
+app.UseAccountBinding();
 app.UseAuthorization();
 app.Use(async (ctx, next) =>
 {

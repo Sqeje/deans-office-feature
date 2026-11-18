@@ -1,6 +1,6 @@
 import { mockRequests } from './requests-http';
 import { mockPerformance } from "./performance-http";
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './test';
 import { validateRequest } from '../src/modules/requests/model';
 import { requestExamples } from '../src/modules/requests/demo';
 async function student(page: Page) { await page.route('**/api/identity/session', r => r.fulfill({ json: { userId: 'demo', studentId: 'demo', universityId: 'u', displayName: 'Студент', roles: ['Student'], areas: ['student'], permissions: [] } })); }

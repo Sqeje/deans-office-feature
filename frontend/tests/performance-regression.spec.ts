@@ -1,5 +1,5 @@
 import { mockRequests } from './requests-http';
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 import { mockPerformance } from "./performance-http";
 
 test("existing login, profile, navigation and logout with mocked HTTP", async ({

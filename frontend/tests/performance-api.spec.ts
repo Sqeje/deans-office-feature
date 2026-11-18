@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./test";
 import { mockPerformance, performanceResponse } from "./performance-http";
 
 async function login(page: Page, account: "student1" | "student2" | "staff") {

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test';
 import { mockPerformance } from './performance-http';
 import { mockRequests } from './requests-http';
 test.beforeEach(async ({ page }) => {

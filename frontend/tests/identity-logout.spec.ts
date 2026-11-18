@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 import { mockPerformance } from "./performance-http";
 
 // Explicit HTTP fixtures exercise failure states only; real authentication is in identity.spec.ts.
