@@ -125,9 +125,25 @@ test("staff has a separate mobile workspace and applicants stay public", async (
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/staff/);
   await expect(page.getByText("РАБОЧЕЕ МЕСТО СОТРУДНИКА")).toBeVisible();
-  await expect(
-    page.getByText("Изменение расписания — Назначенная группа").first(),
-  ).toBeVisible();
+  const contextResponse = await page.request.get("/api/identity/staff-context");
+  expect(contextResponse.ok()).toBeTruthy();
+  const context = await contextResponse.json();
+  expect(context.roles).toContain("Teacher");
+  expect(context.groups.length).toBeGreaterThan(0);
+  expect(context.assignments.length).toBeGreaterThan(0);
+  await expect(page.getByRole("link", { name: "Заполнить журнал занятий", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Проверить итоговые результаты", exact: true })).toBeVisible();
+  for (const group of context.groups) {
+    const assignment = page.locator(".staff-assignment").filter({
+      has: page.getByRole("heading", { name: group.name, exact: true }),
+    });
+    await expect(assignment).toBeVisible();
+    for (const course of context.assignments.filter((a: { groupId: string }) => a.groupId === group.id)) {
+      await expect(assignment.getByRole("link", { name: `${course.courseName} · ${course.semesterId}`, exact: true }))
+        .toHaveAttribute("href", `/staff/academic-performance?view=journal&course=${course.courseId}`);
+    }
+  }
+  await expect(page.getByRole("link", { name: "Обработать обращения", exact: true })).toHaveCount(0);
   await page.reload();
   await expect(
     page.getByRole("link", { name: "Расписание", exact: true }),

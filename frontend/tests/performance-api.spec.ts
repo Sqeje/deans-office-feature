@@ -1,5 +1,23 @@
 import { test, expect, type Page } from "./test";
 import { mockPerformance, performanceResponse } from "./performance-http";
+import type { components } from "../src/shared/schema";
+
+type Performance = components["schemas"]["PerformanceResponse"];
+async function readPerformance(page: Page, semesterId: string): Promise<Performance> {
+  const response = await page.request.get(`/api/academic-performance/student?semesterId=${semesterId}`);
+  expect(response.ok()).toBeTruthy();
+  return response.json();
+}
+const formatNumber = (value: number | string) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(Number(value));
+async function expectHome(page: Page, summary: Performance["summary"]) {
+  const values = page.locator(".performance-summary-values");
+  for (const [label, value] of [
+    ["Сдано дисциплин", `${summary.passed} из ${summary.total}`],
+    ["Зачёты", String(summary.credits)],
+    ["Средний балл", summary.average === null ? "Оценок пока нет" : formatNumber(summary.average)],
+    ["Задолженности", String(summary.debts)],
+  ]) await expect(values.locator("div").filter({ hasText: label })).toHaveText(label + value);
+}
 
 async function login(page: Page, account: "student1" | "student2" | "staff") {
   const key =
@@ -18,11 +36,11 @@ async function login(page: Page, account: "student1" | "student2" | "staff") {
     "Здравствуйте",
   );
 }
-const course = "60000000-0000-0000-0000-000000000003";
 
 test("live PostgreSQL: employee saves, two students stay separate, home and section agree after reload", async ({
   browser,
 }) => {
+  test.setTimeout(90000);
   const contexts = await Promise.all(
     [1, 2, 3].map(() =>
       browser.newContext({ viewport: { width: 360, height: 900 } }),
@@ -40,50 +58,61 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
     await login(second, "student2");
     await login(staff, "staff");
     const profile = await (await first.request.get("/api/identity/me")).json();
-    restore = async () => {
+    const catalog = await (await first.request.get("/api/academic-performance/semesters")).json();
+    const semesterId = catalog.defaultSemesterId;
+    const original = await readPerformance(first, semesterId);
+    const otherOriginal = await readPerformance(second, semesterId);
+    const contextResponse = await staff.request.get("/api/identity/staff-context");
+    expect(contextResponse.ok()).toBeTruthy();
+    const context = await contextResponse.json();
+    const discipline = original.disciplines.find(d => d.isLocal && d.assessment === "exam" &&
+      context.assignments.some((a: { courseId: string; semesterId: string }) => a.courseId === d.id && a.semesterId === semesterId));
+    expect(discipline, "Teacher must have an assigned local exam in the student's semester").toBeTruthy();
+    const course = discipline!.id;
+    const assignment = context.assignments.find((a: { courseId: string }) => a.courseId === course);
+    const resultUrl = `/api/academic-performance/staff/students/${profile.id}/courses/${course}/result`;
+    const setResult = async (kind: string, value: number | null, reason: string) => {
+      const current = await readPerformance(first, semesterId);
+      const version = current.disciplines.find(d => d.id === course)!.version;
       const csrf = await (await staff.request.get("/api/identity/csrf")).json();
-      const response = await staff.request.put(
-        `/api/academic-performance/staff/students/${profile.id}/courses/${course}/result`,
-        {
-          data: { kind: "grade", value: 2 },
-          headers: { "X-CSRF-TOKEN": csrf.token },
-        },
-      );
+      const response = await staff.request.put(resultUrl, {
+        data: { kind, value, version, reason }, headers: { "X-CSRF-TOKEN": csrf.token },
+      });
       expect(response.status()).toBe(204);
     };
-    await restore();
+    restore = async () => {
+      const final = discipline!.final;
+      await setResult(final?.kind ?? "pending", final?.value == null ? null : Number(final.value), "Восстановление исходного результата после теста");
+    };
+    await setResult("grade", 2, "Подготовка результата для проверки сохранения");
+    const before = await readPerformance(first, semesterId);
     await first.reload();
-    await expect(first.locator(".performance-summary-values")).toContainText(
-      "1 из 4",
-    );
-    await expect(second.locator(".performance-summary-values")).toContainText(
-      "2 из 4",
-    );
-    await expect(
-      first
-        .locator(".performance-summary-values div")
-        .filter({ hasText: "Зачёты" }),
-    ).toHaveText("Зачёты1");
+    await expectHome(first, before.summary);
+    await expectHome(second, otherOriginal.summary);
+    const nextExam = before.summary.nextExam;
+    expect(nextExam, "Demo semester must retain a pending upcoming exam").toBeTruthy();
     await first
       .getByRole("link", {
-        name: "Открыть ближайший экзамен: Программирование",
+        name: `Открыть ближайший экзамен: ${nextExam!.name}`,
         exact: true,
       })
       .click();
     await expect(first.getByRole("heading", { level: 1 })).toHaveText(
-      "Программирование",
+      nextExam!.name,
     );
     await expect(
-      first.getByText("20 января 2027 г.", { exact: true }),
+      first.getByText(new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(nextExam!.date + "T12:00:00")), { exact: true }),
     ).toBeVisible();
     await first.goto("/student");
     await expect(first.locator(".performance-summary-values")).toBeVisible();
-    await staff.goto("/staff/academic-performance");
+    await staff.goto("/staff/academic-performance?view=finals");
     await staff
       .getByLabel("Группа", { exact: true })
-      .selectOption("20000000-0000-0000-0000-000000000001");
+      .selectOption(assignment.groupId);
     await staff.getByLabel("Студент", { exact: true }).selectOption(profile.id);
     await staff.getByLabel("Дисциплина", { exact: true }).selectOption(course);
+    await staff.getByRole("button", { name: "Исправить результат", exact: true }).click();
+    await staff.getByLabel("Причина изменения", { exact: false }).fill("Проверка сохранения исправленного результата");
     await staff.getByLabel("Итоговый результат").selectOption("4");
     await staff
       .getByRole("button", { name: "Сохранить результат", exact: true })
@@ -93,41 +122,34 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
     );
     await expect(staff.getByText("Текущий итог: 4")).toBeVisible();
     await first.reload();
-    await expect(first.locator(".performance-summary-values")).toContainText(
-      "2 из 4",
-    );
-    await expect(
-      first
-        .locator(".performance-summary-values")
-        .locator("div")
-        .filter({ hasText: "Средний балл" }),
-    ).toHaveText("Средний балл4");
+    const after = await readPerformance(first, semesterId);
+    expect(after.disciplines.find(d => d.id === course)!.final).toEqual({ kind: "grade", value: 4 });
+    expect(Number(after.summary.passed)).toBe(Number(before.summary.passed) + 1);
+    expect(Number(after.summary.debts)).toBe(Number(before.summary.debts) - 1);
+    const grades = before.disciplines.filter(d => d.final?.kind === "grade").map(d => d.id === course ? 4 : Number(d.final!.value));
+    expect(after.summary.average).toBeCloseTo(grades.reduce((a, b) => a + b, 0) / grades.length, 2);
+    await expectHome(first, after.summary);
     await first
       .getByRole("link", { name: "Открыть успеваемость", exact: true })
       .click();
     await expect(first.locator(".academic-results-summary")).toHaveText(
-      "Сдано дисциплин: 2 · Средний балл: 4",
+      `Сдано дисциплин: ${after.summary.passed} · Средний балл: ${formatNumber(after.summary.average!)}`,
     );
     await first
       .getByRole("link", {
-        name: "Открыть дисциплину: Компьютерные сети",
+        name: `Открыть дисциплину: ${discipline!.name}`,
         exact: true,
       })
+      .and(first.locator(`a[href*="discipline=${course}"]`))
       .click();
     await expect(first.locator(".academic-attestation")).toContainText("4");
     await first.reload();
     await expect(first.locator(".academic-attestation")).toContainText("4");
     await second.reload();
-    await expect(
-      second
-        .locator(".performance-summary-values")
-        .locator("div")
-        .filter({ hasText: "Средний балл" }),
-    ).toHaveText("Средний балл5");
+    expect(await readPerformance(second, semesterId)).toEqual(otherOriginal);
+    await expectHome(second, otherOriginal.summary);
     await first.goto("/student");
-    await expect(first.locator(".performance-summary-values")).toContainText(
-      "2 из 4",
-    );
+    await expectHome(first, after.summary);
     await first
       .getByLabel("Семестр", { exact: true })
       .selectOption("2026-spring");
@@ -148,10 +170,10 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
     await expect(
       first.locator(".academic-stat").filter({ hasText: "Зачёты" }),
     ).toContainText("1");
-    await first.goto("/student?semester=2026-autumn");
+    await first.goto(`/student?semester=${semesterId}`);
     await expect(
       first.getByRole("link", {
-        name: "Открыть ближайший экзамен: Программирование",
+        name: `Открыть ближайший экзамен: ${after.summary.nextExam!.name}`,
         exact: true,
       }),
     ).toBeVisible();
@@ -173,6 +195,7 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
         });
       }
     }
+    await staff.getByRole("button", { name: "Исправить результат", exact: true }).click();
     await staff.getByLabel("Итоговый результат").focus();
     await expect(staff.getByLabel("Итоговый результат")).toBeFocused();
     await staff.emulateMedia({ reducedMotion: "reduce" });
@@ -266,13 +289,22 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
         studentId: null,
         universityId: "10000000-0000-0000-0000-000000000001",
         displayName: "Сотрудник",
-        roles: ["Staff"],
+        roles: ["Staff", "Teacher"],
         areas: ["staff"],
-        permissions: [{ permission: "grades.write", groupId: "group" }],
+        permissions: [
+          { permission: "grades.read", groupId: "group" },
+          { permission: "grades.write", groupId: "group" },
+        ],
       },
     }),
   );
   await mockPerformance(page);
+  await page.route("**/api/identity/staff-context", r => r.fulfill({ json: {
+    roles: ["Staff", "Teacher"],
+    groups: [{ id: "group", name: "Учебная группа с очень длинным демонстрационным названием", actions: ["grades.read", "grades.write"] }],
+    assignments: [{ id: "assignment", courseId: "networks", groupId: "group", semesterId: "2026-autumn", courseName: "Компьютерные сети" }],
+  } }));
+  await page.route("**/api/academic-performance/staff/students/*/courses/networks/history", r => r.fulfill({ json: [] }));
   await page.route("**/api/academic-performance/staff/groups", (r) =>
     r.fulfill({
       json: [
@@ -303,6 +335,7 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
   });
   const name =
     "Очень длинное название дисциплины для проверки переноса и доступности формы результатов";
+  let saved = false;
   await page.route(
     "**/api/academic-performance/staff/students/*?*",
     async (r) => {
@@ -314,7 +347,9 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
         ...data.disciplines[0],
         name: first ? "Устаревший ответ первого студента" : name,
       };
-      await r.fulfill({ json: data });
+      await r.fulfill({ json: { ...data, disciplines: data.disciplines.map(d => ({
+        ...d, version: saved ? 2 : 1, ...(saved ? { final: { kind: "grade", value: 4 }, status: "passed" } : {}),
+      })) } });
     },
   );
   await page.goto("/staff/academic-performance");
@@ -336,7 +371,9 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
     "**/api/academic-performance/staff/students/second/courses/networks/result",
     async (r) => {
       writes++;
+      expect(r.request().postDataJSON()).toEqual({ kind: "grade", value: 4, version: 1, reason: "Проверка исправления результата" });
       await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!fail) saved = true;
       await r.fulfill(
         fail
           ? { status: 400, json: { code: "validation_failed" } }
@@ -344,6 +381,8 @@ test("staff changes selection safely, keeps failed input, prevents duplicate sav
       );
     },
   );
+  await page.getByRole("button", { name: "Исправить результат", exact: true }).click();
+  await page.getByLabel("Причина изменения", { exact: false }).fill("Проверка исправления результата");
   await page.getByLabel("Итоговый результат").selectOption("4");
   await page
     .getByRole("button", { name: "Сохранить результат", exact: true })

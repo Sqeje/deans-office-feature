@@ -3,10 +3,12 @@ import ExcelJS from "exceljs";
 import { buildScheduleXlsx } from "../src/modules/schedule/export";
 import { scheduleSource } from "../src/modules/schedule/source";
 import { dateKey, type Entity } from "../src/modules/schedule/model";
+import { mockScheduleCatalog } from "./schedule-catalog-http";
 
 const instant = "2026-11-11T12:30:00+03:00";
 const saveButton = (page: Page) => page.getByRole("button", { name: "Сохранить на устройство", exact: true });
 async function open(page: Page, path: string, time = instant) {
+  await mockScheduleCatalog(page);
   await page.route("**/api/notifications/student", r => r.fulfill({ json: { items: [], unreadCount: 0 } }));
   await page.route("**/api/identity/session", route => route.fulfill({ json: {
     userId: "demo", universityId: "demo", displayName: "Алексей Примеров", roles: ["Student"], studentId: "demo", permissions: [], areas: ["student"],
@@ -37,7 +39,7 @@ for (const entity of ["group", "teacher"] as const) {
       const { workbook, sheet, filename } = await download(page, testInfo.outputPath("schedule.xlsx"));
       expect(workbook.worksheets).toHaveLength(1);
       expect(sheet.getCell("A1").text).toContain(entity === "group" ? "ПИ-21" : "Иван Викторович Лебедев");
-      expect(sheet.getCell("A3").text).toBe("Демонстрационные данные — не связаны с вашим профилем.");
+      expect(sheet.getCell("A3").text).toBe("Общее расписание университета. Данные с сервера.");
       expect(sheet.getCell("A4").text).toContain("Московское время · UTC+3");
       expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: 6 });
       const rows = Array.from({ length: sheet.rowCount - 6 }, (_, i) => sheet.getRow(i + 7));
@@ -75,13 +77,10 @@ for (const entity of ["group", "teacher"] as const) {
         expect(sheet.getCell("A2").text).toContain("31 января 2027");
         expect(filename).toContain("2026-09-01–2027-01-31");
         expect(dates.every(day => day >= "2026-09-01" && day <= "2027-01-31")).toBe(true);
-        expect(rows.some(row => row.getCell(9).text.includes("Неявка"))).toBe(true);
-        if (entity === "group") {
-          expect(rows.some(row => row.getCell(9).text.includes("Сдано"))).toBe(true);
-          expect(rows.some(row => row.getCell(9).text.includes("Не сдано"))).toBe(true);
-        }
-        expect(rows.filter(row => (row.getCell(1).value as Date).toISOString().slice(0, 10) > "2026-11-11")
-          .every(row => row.getCell(9).text === "По расписанию")).toBe(true);
+        expect(dates.some(day => day < "2026-11-11")).toBe(true);
+        expect(dates.some(day => day > "2026-11-11")).toBe(true);
+        expect(rows.every(row => row.getCell(9).text === "По расписанию")).toBe(true);
+        expect(rows.every(row => !row.getCell(4).font.strike)).toBe(true);
       }
       if (entity === "teacher") expect(new Set(rows.map(row => row.getCell(8).text)).size).toBeGreaterThan(1);
       else expect(rows.every(row => row.getCell(8).text === "ПИ-21")).toBe(true);

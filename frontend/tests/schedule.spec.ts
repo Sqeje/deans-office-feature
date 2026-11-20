@@ -2,12 +2,14 @@ import { test, expect, type Page as BrowserPage, type Locator } from "./test";
 import { addDays, changedFields, dateKey, isCurrent, lessonsForDay, assessmentOutcome, semesterOf, validDate, weekOf, type Lesson } from "../src/modules/schedule/model";
 import { scheduleSource } from "../src/modules/schedule/source";
 import { groups, searchTeachers } from "../src/modules/schedule/catalog";
+import { mockScheduleCatalog } from "./schedule-catalog-http";
 const wednesday = "2026-11-11T12:30:00+03:00";
 const sample: Lesson = {
   id: "one", title: "Предмет", kind: "Лекция", room: "Ауд. 1", teacher: "Преподаватель",
   startsAt: "2026-11-11T12:10:00+03:00", endsAt: "2026-11-11T13:40:00+03:00", change: { status: "scheduled" },
 };
 async function session(page: BrowserPage) {
+  await mockScheduleCatalog(page);
   await page.route("**/api/notifications/student", r => r.fulfill({ json: { items: [], unreadCount: 0 } }));
   await page.route("**/api/identity/session", route => route.fulfill({ json: {
     userId: "demo", universityId: "demo", displayName: "Алексей Примеров", roles: ["Student"], studentId: "demo", permissions: [], areas: ["student"],
@@ -102,18 +104,16 @@ test("today, full week, changes, Sunday and history", async ({ page }) => {
   await expect(page.locator(".schedule-day-title time")).toHaveAttribute("datetime", "2026-11-11");
 });
 
-test("catalog hierarchy keeps demo groups separate from the personal server schedule", async ({ page }) => {
+test("flat server catalog keeps group navigation separate from the personal schedule", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openSchedule(page, "/student/schedule/catalog");
   await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();
   await expect(nav(page).getByRole("link", { name: "Все расписания", exact: true })).toHaveAttribute("aria-current", "page");
-  await page.getByRole("link", { name: "Информатика и вычислительная техника", exact: true }).click();
-  await page.getByRole("link", { name: "Прикладная информатика", exact: true }).click();
-  await page.getByRole("link", { name: "2024", exact: true }).click();
+  await expect(page.locator(".schedule-catalog-list li")).toHaveCount(groups.length);
   await page.getByRole("link", { name: "ПИ-22", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Расписание группы ПИ-22" })).toBeVisible();
   await expect(page.locator(".schedule-row")).toHaveCount(1);
-  await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "2024", exact: true }).click();
+  await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "Все расписания", exact: true }).click();
   await page.getByRole("link", { name: "ПИ-21", exact: true }).click();
   await expect(page).toHaveURL(/\/student\/schedule\/groups\/pi-21$/);
   await expect(nav(page).getByRole("link", { name: "Все расписания", exact: true })).toHaveAttribute("aria-current", "page");
@@ -125,23 +125,28 @@ test("catalog hierarchy keeps demo groups separate from the personal server sche
   await expect(page).toHaveURL(/\/student\/schedule\/groups\/pi-21\?view=week$/);
 });
 
-test("teacher search handles case, initials, no results, empty input and history", async ({ page }) => {
+test("teacher search filters full names as typed and preserves query through navigation and reload", async ({ page }) => {
   await openSchedule(page, "/student/schedule/catalog");
   const input = page.getByRole("textbox", { name: "Поиск преподавателя" });
-  await input.fill("  ЛЕБЕДЕВ  "); await input.press("Enter");
+  await input.fill("ЛЕБЕДЕВ");
   await expect(page.locator(".schedule-search li")).toHaveCount(1);
   await expect(page).toHaveURL(/q=/);
-  await input.fill("нет такого преподавателя"); await input.press("Enter");
-  await expect(page.getByText("Преподаватели не найдены. Измените запрос.")).toBeVisible();
-  await page.goBack();
-  await expect(input).toHaveValue("ЛЕБЕДЕВ");
-  await input.fill(""); await input.press("Enter");
+  await input.fill("нет такого преподавателя");
+  await expect(page.getByText("Преподаватели не найдены.")).toBeVisible();
+  await input.fill("");
   await expect(page.locator(".schedule-search li")).toHaveCount(3);
-  await input.fill("И.В. Лебедев"); await input.press("Enter");
-  await page.locator(".schedule-search").getByRole("link", { name: "И. В. Лебедев" }).click();
+  await input.fill("Иван Викторович");
+  await page.locator(".schedule-search").getByRole("link", { name: "Иван Викторович Лебедев", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Иван Викторович Лебедев", exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(input).toHaveValue("Иван Викторович");
+  await page.goForward();
   await expect(page.getByRole("heading", { name: "Иван Викторович Лебедев", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "← К поиску преподавателя" }).click();
-  await expect(input).toHaveValue("И.В. Лебедев");
+  await expect(input).toHaveValue("Иван Викторович");
+  await page.reload();
+  await expect(input).toHaveValue("Иван Викторович");
+  await expect(page.locator(".schedule-search li")).toHaveCount(1);
 });
 
 test("teacher card opens first, Escape restores focus; teacher week shows multiple groups", async ({ page }) => {
@@ -203,12 +208,17 @@ test("midnight, minute ticks, timezone and malformed query keep real Moscow date
   await context.close();
 });
 
-test("unknown route, entity and hierarchy IDs show catalog exit", async ({ page }) => {
+test("unknown route and entity IDs show catalog exit; legacy hierarchy routes open the flat catalog", async ({ page }) => {
   await session(page);
-  for (const path of ["groups/missing", "teachers/missing", "catalog/economics/applied-informatics", "catalog/informatics/applied-informatics/2099", "unknown"]) {
+  for (const path of ["groups/missing", "teachers/missing", "unknown"]) {
     await page.goto(`/student/schedule/${path}`);
     await expect(page.getByRole("heading", { name: "Расписание не найдено" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Открыть каталог" })).toBeVisible();
+  }
+  for (const path of ["catalog/economics/applied-informatics", "catalog/informatics/applied-informatics/2099"]) {
+    await page.goto(`/student/schedule/${path}`);
+    await expect(page.getByRole("heading", { name: "Все расписания", exact: true })).toBeVisible();
+    await expect(page.locator(".schedule-catalog-list li")).toHaveCount(groups.length);
   }
 });
 
@@ -308,7 +318,7 @@ for (const width of [360, 390, 768, 1024, 1280, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/schedule-assessments-${width}.png`, fullPage: true, animations: "disabled" });
     await page.goto("/student/schedule/catalog");
-    await expect(page.locator(".schedule-catalog-list li")).toHaveCount(4);
+    await expect(page.locator(".schedule-catalog-list li")).toHaveCount(groups.length);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/schedule-catalog-${width}.png`, fullPage: true, animations: "disabled" });
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -354,15 +364,22 @@ test("only actual changed fields are selected, comparing instants rather than of
 
 for (const width of [360, 1280]) {
   test(`cancelled text is struck and only modified fields have yellow backgrounds ${width}`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
     await page.setViewportSize({ width, height: 900 });
     await page.route("**/api/identity/session", r => r.fulfill({ status: 401 }));
     await page.goto("/login");
     await page.evaluate(async (sample) => {
       const reactPath = "/node_modules/.vite/deps/react.js";
       const rootPath = "/node_modules/.vite/deps/react-dom_client.js";
+      // Reuse Vite's versioned module URL so the wrapper and row share Router contexts.
+      const routerPath = performance.getEntriesByType("resource").map(entry => entry.name)
+        .find(url => new URL(url).pathname.endsWith("/react-router-dom.js"));
+      if (!routerPath) throw new Error("Router module was not loaded");
       const componentPath = "/src/modules/schedule/Page.tsx";
       const rm = await import(reactPath), React = rm.default ?? rm;
       const dm = await import(rootPath), { ScheduleRow } = await import(componentPath);
+      const { MemoryRouter } = await import(routerPath);
       const previous = { status: "rescheduled", startsAt: sample.startsAt, endsAt: sample.endsAt, room: sample.room, teacher: sample.teacher };
       const lessons = [
         { ...sample, title: "Только время", startsAt: "2026-11-11T14:00:00+03:00", endsAt: "2026-11-11T15:30:00+03:00", change: previous },
@@ -376,9 +393,11 @@ for (const width of [360, 1280]) {
       host.id = "changed-fields-test";
       host.style.padding = "16px";
       document.body.append(host);
-      (dm.default ?? dm).createRoot(host).render(React.createElement("ul", { className: "schedule-list" }, lessons.map((lesson, i) => React.createElement(ScheduleRow, { key: i, lesson, now: new Date("2026-11-11T12:30:00+03:00") }))));
+      (dm.default ?? dm).createRoot(host).render(React.createElement(MemoryRouter, null,
+        React.createElement("ul", { className: "schedule-list" }, lessons.map((lesson, i) => React.createElement(ScheduleRow, { key: i, lesson, now: new Date("2026-11-11T12:30:00+03:00") })))));
     }, sample);
     const host = page.locator("#changed-fields-test");
+    await expect.poll(async () => ({ rows: await host.getByRole("listitem").count(), errors })).toEqual({ rows: 6, errors: [] });
     for (const [title, field, description, old] of [
       ["Только время", ".schedule-time", "Время изменено", "12:10–13:40"],
       ["Только аудитория", ".schedule-place", "Аудитория изменена", "Ауд. 1"],
@@ -495,28 +514,19 @@ for (const width of [360, 1280]) {
     await expect(page.locator(".schedule-day-title time").first()).toHaveAttribute("datetime", "2026-12-28");
   });
 
-  test(`past assessments show passed, absent and failed correctly ${width}`, async ({ page }) => {
+  test(`server assessments never invent passed, absent or failed results ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openSchedule(page, "/student/schedule?kind=assessments");
     await expect(page.getByRole("button", { name: "Контрольные и экзамены", exact: true })).toHaveAttribute("aria-pressed", "true");
-    const passed = page.locator(".schedule-passed");
-    await expect(passed).toHaveCount(1);
-    await expect(passed.getByText("Сдано", { exact: true })).toHaveCSS("color", "rgb(36, 99, 56)");
-    await expect(passed.getByText("Сдано", { exact: true })).toHaveCSS("text-decoration-line", "none");
-    for (const label of ["Неявка", "Не сдано"]) {
-      const row = page.locator(".schedule-row").filter({ has: page.getByText(label, { exact: true }) });
-      await expect(row).toHaveCount(1);
-      await expect(row.getByText(label, { exact: true })).toHaveCSS("color", "rgb(180, 35, 24)");
-      await expect(row.getByRole("heading")).toHaveCSS("font-weight", "700");
-      await expect(row.locator(".schedule-place")).toHaveCSS("font-weight", "700");
-      await expect(row.getByText(label, { exact: true })).toHaveCSS("font-weight", "700");
-      await expect(row.getByRole("heading")).toHaveCSS("text-decoration-line", "none");
-      for (const time of await row.locator("time").all()) await expect(time).toHaveCSS("text-decoration-line", "none");
+    await expect(page.locator(".schedule-row")).toHaveCount(6);
+    const dates = await page.locator(".schedule-day-title time").evaluateAll(nodes => nodes.map(node => node.getAttribute("datetime")!));
+    expect(dates.some(day => day < "2026-11-11")).toBe(true);
+    expect(dates.some(day => day > "2026-11-11")).toBe(true);
+    await expect(page.locator(".schedule-passed, .schedule-result-passed, .schedule-result-absent, .schedule-result-failed")).toHaveCount(0);
+    for (const label of ["Сдано", "Неявка", "Не сдано"]) await expect(page.getByText(label, { exact: true })).toHaveCount(0);
+    for (const text of await page.locator(".schedule-row h3, .schedule-row time").all()) {
+      await expect(text).toHaveCSS("text-decoration-line", "none");
     }
-    for (const time of await passed.locator("time").all()) await expect(time).toHaveCSS("text-decoration-line", "line-through");
-    await expect(passed.getByRole("heading")).toHaveCSS("text-decoration-line", "line-through");
-    const future = page.locator(".schedule-row").filter({ hasText: "Базы данных" });
-    await expect(future.locator(".schedule-result-passed, .schedule-result-absent, .schedule-result-failed")).toHaveCount(0);
     await page.screenshot({ path: `test-results/schedule-assessment-results-${width}.png`, fullPage: true, animations: "disabled" });
   });
 }

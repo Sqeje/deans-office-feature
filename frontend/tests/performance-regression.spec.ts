@@ -93,9 +93,13 @@ test("staff workspace retains its permissions and shows empty assigned groups", 
         studentId: null,
         universityId: "10000000-0000-0000-0000-000000000001",
         displayName: "Сотрудник Примеров",
-        roles: ["Staff"],
+        roles: ["Staff", "Teacher"],
         areas: ["staff"],
         permissions: [
+          {
+            permission: "grades.read",
+            groupId: "20000000-0000-0000-0000-000000000001",
+          },
           {
             permission: "grades.write",
             groupId: "20000000-0000-0000-0000-000000000001",
@@ -103,6 +107,9 @@ test("staff workspace retains its permissions and shows empty assigned groups", 
         ],
       },
     }),
+  );
+  await page.route("**/api/identity/staff-context", (route) =>
+    route.fulfill({ json: { roles: ["Staff", "Teacher"], groups: [], assignments: [] } }),
   );
   await page.goto("/staff");
   await expect(
