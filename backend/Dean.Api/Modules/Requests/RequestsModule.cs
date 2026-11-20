@@ -19,18 +19,18 @@ public sealed class RequestsModule : IAppModule
     private static bool Student(Actor actor) => actor.StudentId is not null && actor.Roles.Contains("Student");
     private static RequestStatus Status(string value) => value switch {
         "submitted" => RequestStatus.Submitted, "in_review" => RequestStatus.InReview,
-        "ready" => RequestStatus.Ready, "rejected" => RequestStatus.Rejected,
+        "ready" => RequestStatus.Ready, "rejected" => RequestStatus.Rejected, "completed" => RequestStatus.Completed,
         _ => throw new InvalidOperationException("Invalid stored request status")
     };
     private static string Wire(RequestStatus value) => value switch {
         RequestStatus.Submitted => "submitted", RequestStatus.InReview => "in_review",
-        RequestStatus.Ready => "ready", RequestStatus.Rejected => "rejected", _ => "unknown"
+        RequestStatus.Ready => "ready", RequestStatus.Rejected => "rejected", RequestStatus.Completed => "completed", _ => "unknown"
     };
     private static RequestInput Input(StudentRequest x) => new(x.Kind, x.Place, x.Copies, x.Reason, x.Start, x.End);
     private static RequestDto Dto(StudentRequest x, string? name = null) => new(x.Id, x.Number.ToString(CultureInfo.InvariantCulture),
-        x.Kind == "certificate" ? "Справка об обучении" : "Заявление на индивидуальный график", Status(x.Status), x.SubmittedAt, Input(x), x.Version,
+        RequestCatalog.Find(x.Kind)?.Title ?? "Заявка", Status(x.Status), x.SubmittedAt, Input(x), x.Version,
         x.History.SingleOrDefault(h => h.Status == "rejected")?.RejectionReason,
-        x.History.OrderBy(h => h.Version).Select(h => new HistoryDto(Status(h.Status), h.OccurredAt, h.IsStaff ? "Сотрудник" : "Студент", h.RejectionReason)).ToArray(), name);
+        x.History.OrderBy(h => h.Version).Select(h => new HistoryDto(Status(h.Status), h.OccurredAt, h.IsStaff ? "Сотрудник" : "Студент", h.RejectionReason)).ToArray(), name, x.UpdatedAt);
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api/requests").WithTags("Requests");
@@ -78,15 +78,19 @@ public sealed class RequestsModule : IAppModule
     {
         if (input is null) { Invalid("input", "Заполните заявку."); return null!; }
         var x = input with { Place = input.Place?.Trim(), Reason = input.Reason?.Trim() };
-        if (x.Kind == "certificate") {
+        var type = RequestCatalog.Find(x.Kind);
+        if (type is null) { Invalid("kind", "Выберите вид заявки."); return null!; }
+        if (x.Reason?.Length > 2000) Invalid("reason", "Не больше 2000 символов.");
+        if (type.Form == "certificate") {
             if (string.IsNullOrWhiteSpace(x.Place) || input.Place!.Length > 200) Invalid("place", "Укажите место предъявления: не больше 200 символов.");
             if (x.Copies is not (>= 1 and <= 5)) Invalid("copies", "Укажите целое число от 1 до 5.");
-            if (x.Reason is not null || x.Start is not null || x.End is not null) Invalid("input", "Проверьте поля справки.");
-        } else if (x.Kind == "statement") {
+            if (x.Start is not null || x.End is not null) Invalid("input", "Проверьте поля справки.");
+        } else {
             if (string.IsNullOrWhiteSpace(x.Reason) || input.Reason!.Length > 2000) Invalid("reason", "Укажите причину: не больше 2000 символов.");
-            if (x.Start is null || x.End is null || x.End < x.Start) Invalid("end", "Укажите период; окончание не раньше начала.");
+            if (type.Form == "period" && (x.Start is null || x.End is null || x.End < x.Start)) Invalid("end", "Укажите период; окончание не раньше начала.");
+            if (type.Form == "comment" && (x.Start is not null || x.End is not null)) Invalid("input", "Для этого обращения период не нужен.");
             if (x.Place is not null || x.Copies is not null) Invalid("input", "Проверьте поля заявления.");
-        } else Invalid("kind", "Выберите вид заявки.");
+        }
         return x;
     }
     private static async Task<IResult> Create(CreateRequest input, ICurrentActor current, IStudentDirectory directory, AppDbContext db, HttpContext ctx, CancellationToken ct)
@@ -121,7 +125,7 @@ public sealed class RequestsModule : IAppModule
         var row = await Query(db, actor).SingleOrDefaultAsync(x => x.Id == id, ct);
         if (row is null) return KernelHttp.Problem(ctx, 404, "request_not_found");
         await guard.Require(Permissions.RequestsManage, actor.UniversityId, row.GroupId, ct);
-        if (input.Version != row.Version || !(row.Status == "submitted" && Wire(input.Status) == "in_review" || row.Status == "in_review" && Wire(input.Status) is "ready" or "rejected"))
+        if (input.Version != row.Version || !(row.Status == "submitted" && Wire(input.Status) == "in_review" || row.Status == "in_review" && Wire(input.Status) is "ready" or "rejected" || row.Status == "ready" && Wire(input.Status) == "completed"))
             return KernelHttp.Problem(ctx, 409, "status_conflict");
         var reason = input.RejectionReason?.Trim();
         if (Wire(input.Status) == "rejected" && (string.IsNullOrWhiteSpace(reason) || input.RejectionReason!.Length > 2000)) Invalid("rejectionReason", "Укажите причину отклонения: не больше 2000 символов.");

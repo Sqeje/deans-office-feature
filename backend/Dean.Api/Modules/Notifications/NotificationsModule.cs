@@ -11,10 +11,10 @@ internal sealed class RequestNotifications(AppDbContext db) : IRequestNotificati
 {
     public void StatusChanged(Guid universityId, string studentId, Guid requestId, long version, string status, DateTimeOffset occurredAt)
     {
-        var label = status switch { "in_review" => "На рассмотрении", "ready" => "Готова", "rejected" => "Отклонена", _ => throw new ArgumentException("Unsupported status") };
+        var label = status switch { "in_review" => "На рассмотрении", "ready" => "Готова к выдаче", "completed" => "Выполнена", "rejected" => "Отклонена", _ => throw new ArgumentException("Unsupported status") };
         db.Add(new Message { Id = Guid.NewGuid(), UniversityId = universityId, StudentId = studentId,
             EventKey = $"request:{requestId}:{version}", Category = "request", Title = $"Заявка: {label}",
-            Text = "Статус вашей заявки изменился. Откройте заявку для подробностей.", CreatedAt = occurredAt, RelatedType = "request", RelatedId = requestId });
+            Text = status == "ready" ? "Документ по вашей заявке готов и ещё не получен. Обратитесь в учебный офис; место и время выдачи уточните у сотрудника." : status == "completed" ? "Выполнение вашей заявки подтверждено сотрудником. Подробности доступны в истории заявки." : "Статус вашей заявки изменился. Откройте заявку для подробностей.", CreatedAt = occurredAt, RelatedType = "request", RelatedId = requestId });
     }
 }
 public sealed class NotificationsModule : IAppModule

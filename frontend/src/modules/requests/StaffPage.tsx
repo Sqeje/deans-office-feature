@@ -48,7 +48,7 @@ function StaffRequests() {
     }).catch(error => { if (active) setFailure(error); });
     return () => { active = false; if (generation.current === version) generation.current++; };
   }, [id, group, attempt]);
-  async function change(status: 'in_review' | 'ready' | 'rejected') {
+  async function change(status: 'in_review' | 'ready' | 'rejected' | 'completed') {
     if (!record || lock.current) return;
     const version = generation.current;
     lock.current = true; setBusy(true); setFailure(undefined);
@@ -82,7 +82,7 @@ function StaffRequests() {
             <label htmlFor="rejection-reason">Причина отклонения</label>
             <textarea id="rejection-reason" maxLength={2000} disabled={busy} value={reason} onChange={e => setReason(e.target.value)} />
             <Button disabled={busy || !reason.trim()} onClick={() => void change('rejected')}>Отклонить заявку</Button>
-          </div> : <p role="status">Обработка завершена</p>}
+          </div> : record.status === 'ready' ? <div className="request-processing"><p>Документ готов к выдаче. Подтверждайте выполнение только после получения документа студентом или завершения обращения.</p><Button disabled={busy} onClick={() => void change('completed')}>Подтвердить выполнение и получение</Button></div> : <p role="status">Обработка завершена</p>}
         {busy && <p role="status">Сохраняем статус…</p>}
       </SectionCard> : !failure && <p role="status">Загружаем заявку…</p>}
     </> : groups ? groups.length ? <>

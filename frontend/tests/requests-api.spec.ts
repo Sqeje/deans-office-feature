@@ -15,7 +15,7 @@ test('live requests: persistence, employee workflow, rejection and ready history
  await student.goto('/student/requests');await expect(student.locator(`a[href*="${id}"]`)).toBeVisible();
  await staff.goto('/staff/requests');await expect(staff.locator(`a[href*="${id}"]`)).toBeVisible();await staff.locator(`a[href*="${id}"]`).click();await staff.getByRole('button',{name:'Взять на рассмотрение'}).click();
  if(kind==='certificate'){await staff.getByLabel('Причина отклонения').fill('Уточните место предъявления');await staff.getByRole('button',{name:'Отклонить заявку'}).click();}else await staff.getByRole('button',{name:'Отметить готовой'}).click();
- await expect(staff.getByText('Обработка завершена')).toBeVisible();await student.goto(`/student/requests?requestId=${id}`);const history=student.getByRole('region',{name:'История заявки'});await expect(history.locator('li')).toHaveCount(3);await expect(history).toContainText(kind==='certificate'?'Уточните место предъявления':'Готова');
+ if(kind==='certificate')await expect(staff.getByText('Обработка завершена')).toBeVisible();else await expect(staff.getByRole('button',{name:'Подтвердить выполнение и получение'})).toBeVisible();await student.goto(`/student/requests?requestId=${id}`);const history=student.getByRole('region',{name:'История заявки'});await expect(history.locator('li')).toHaveCount(3);await expect(history).toContainText(kind==='certificate'?'Уточните место предъявления':'Готова');
  await student.screenshot({path:`../artifacts/requests-live-${kind}-360.png`,fullPage:true});await staff.screenshot({path:`../artifacts/requests-staff-${kind}-1280.png`,fullPage:true});
  await student.goto('/student');await expect(student.locator('.request-card h3 a')).toHaveAttribute('href',new RegExp(id));
  }

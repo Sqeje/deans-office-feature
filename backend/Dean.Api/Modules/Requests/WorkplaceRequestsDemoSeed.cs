@@ -8,7 +8,7 @@ namespace Dean.Api.Modules.Requests;
 
 public sealed class WorkplaceRequestsDemoSeed(AppDbContext db, TimeProvider clock)
 {
-    public async Task Initialize(CancellationToken ct = default)
+    public async Task Initialize(CancellationToken ct = default, string? excludedStudentId = null)
     {
         const string version = "requests-demo-v1";
         var university = ScheduleDemo.University;
@@ -19,6 +19,7 @@ public sealed class WorkplaceRequestsDemoSeed(AppDbContext db, TimeProvider cloc
         var now = clock.GetUtcNow();
         foreach (var student in students)
         {
+            if (student.UserId == excludedStudentId) continue;
             var staffId = await db.StaffGrants.Where(x => x.UniversityId == university && (x.GroupId == null || x.GroupId == student.StudyGroupId) && x.Permission == Permissions.RequestsManage)
                 .OrderBy(x => x.UserId).Select(x => x.UserId).FirstOrDefaultAsync(ct);
             if (staffId is null) throw new InvalidOperationException("Demo requests require an authorized dean for each group.");

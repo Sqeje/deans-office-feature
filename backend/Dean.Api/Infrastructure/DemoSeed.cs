@@ -113,7 +113,11 @@ public static class DemoSeed
         await StaffDemoSeed.Run(db, users, passwords[2]!, universityId);
         await StaffDemoSeed.UpgradeKnownAccounts(db, users, universityId);
         await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.AcademicPerformance.WorkplaceAcademicDemoSeed>().Initialize();
-        await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.Requests.WorkplaceRequestsDemoSeed>().Initialize();
+        var personalizedRequests = config.GetValue<bool>("Demo:Requests");
+        var personalizedStudent = personalizedRequests ? (await users.FindByEmailAsync("student1@demo.invalid"))!.Id : null;
+        await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.Requests.WorkplaceRequestsDemoSeed>().Initialize(excludedStudentId: personalizedStudent);
+        if (personalizedRequests)
+            await Dean.Api.Modules.Requests.RequestDemoSeed.Run(db, scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.Notifications.IRequestNotifications>(), universityId);
     }
     private static void Check(IdentityResult result)
     {
