@@ -1,7 +1,7 @@
 import { useSession } from "../../shared/session";
 import { Navigate, Route, Routes, Link, useParams, useSearchParams } from "react-router-dom";
 import { Breadcrumbs, CatalogPage, NotFound } from "./CatalogPage";
-import { useServerCatalog, catalogSource } from "./serverCatalog";
+import { useServerCatalog, catalogSource, publicCatalogSource } from "./serverCatalog";
 import { ScheduleView } from "./ScheduleView";
 import { ScheduleTabs } from "./Navigation";
 import { PersonalPage } from "./PersonalPage";
@@ -10,8 +10,8 @@ import { StaffPage } from "./StaffPage";
 import { useSchedulePaths } from "./paths";
 import "./schedule.css";
 export { ScheduleRow } from "./Rows";
-function GroupPage() {
-  const { catalog } = useSchedulePaths();
+export function GroupPage() {
+  const { catalog, publicSchedule } = useSchedulePaths();
   const { groupId } = useParams();
   const id = groupId;
   const { data, error } = useServerCatalog();
@@ -21,13 +21,13 @@ function GroupPage() {
   if (!group) return <NotFound />;
   return <>
     <Breadcrumbs items={[{ title: "Все расписания", to: catalog }, { title: group.name }]} />
-    <ScheduleView source={catalogSource} entity={{ kind: "group", id: group.id }}
+    <ScheduleView source={publicSchedule ? publicCatalogSource : catalogSource} entity={{ kind: "group", id: group.id, name: group.name, serverBacked: true }}
       heading={`Расписание группы ${group.name}`}
       description={`Группа ${group.name}`} />
   </>;
 }
-function TeacherPage() {
-  const { catalog: catalogPath } = useSchedulePaths();
+export function TeacherPage() {
+  const { catalog: catalogPath, publicSchedule } = useSchedulePaths();
   const { teacherId } = useParams();
   const [search] = useSearchParams();
   const { data, error } = useServerCatalog();
@@ -39,7 +39,7 @@ function TeacherPage() {
   return <>
     <Breadcrumbs items={[{ title: "Все расписания", to: catalogPath }, { title: "Преподаватели", to: back }, { title: teacher.name }]} />
     <Link className="schedule-back" to={back}>← К поиску преподавателя</Link>
-    <ScheduleView source={catalogSource} entity={{ kind: "teacher", id: teacher.id }}
+    <ScheduleView source={publicSchedule ? publicCatalogSource : catalogSource} entity={{ kind: "teacher", id: teacher.id, name: teacher.name, serverBacked: true }}
       heading={teacher.name} description="Расписание преподавателя" />
   </>;
 }

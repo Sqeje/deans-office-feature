@@ -1,34 +1,68 @@
-﻿using Dean.Api.Infrastructure;
+using Dean.Api.Infrastructure;
 using Dean.Api.Kernel.Http;
 using Dean.Api.Kernel.Security;
 using Dean.Api.Modules.Identity;
 using Microsoft.EntityFrameworkCore;
+
 namespace Dean.Api.Modules.Schedule;
-public sealed record CatalogTeacherDto(string Id,string Name);
-public sealed record ScheduleCatalogDto(DirectoryGroup[] Groups,CatalogTeacherDto[] Teachers);
-public static class CatalogEndpoints {
- public static void MapCatalog(this IEndpointRouteBuilder endpoints) {
- var api=endpoints.MapGroup("/api/schedule/catalog").RequireAuthorization().WithTags("Schedule");
- api.MapGet("",async(ICurrentActor current,IStudentDirectory directory,AppDbContext db,CancellationToken ct)=>{
- var actor=(await current.Get(ct))!;var ids=await AccessibleGroups(actor,directory,ct);
- var groups=await directory.Groups(actor.UniversityId,ids,ct);
- var teachers=await db.Set<ScheduleEntry>().AsNoTracking().Where(x=>x.UniversityId==actor.UniversityId && ids.Contains(x.GroupId) && x.TeacherUserId!=null).Select(x=>new CatalogTeacherDto(x.TeacherUserId!,x.Teacher)).Distinct().ToArrayAsync(ct);
- return new ScheduleCatalogDto(groups,teachers.DistinctBy(x=>x.Id).OrderBy(x=>x.Name).ToArray());
- }).Produces<ScheduleCatalogDto>();
- api.MapGet("/events",async(string kind,string id,DateOnly start,DateOnly end,string category,ICurrentActor current,IStudentDirectory directory,AppDbContext db,HttpContext ctx,CancellationToken ct)=>{
- var actor=(await current.Get(ct))!;var ids=await AccessibleGroups(actor,directory,ct);
- if(start.Year<2000 || end.Year>2100 || end<start || end.DayNumber-start.DayNumber>366 || category is not("lesson" or "assessment") || kind is not("group" or "teacher"))throw new InputValidationException(new Dictionary<string,string[]> {["query"]=["Проверьте параметры расписания."]});
- var groups=await directory.Groups(actor.UniversityId,ids,ct);
- var from=new DateTimeOffset(start.ToDateTime(TimeOnly.MinValue),TimeSpan.FromHours(3)).ToUniversalTime();var until=new DateTimeOffset(end.AddDays(1).ToDateTime(TimeOnly.MinValue),TimeSpan.FromHours(3)).ToUniversalTime();
- var query=db.Set<ScheduleEntry>().AsNoTracking().Where(x=>x.UniversityId==actor.UniversityId && ids.Contains(x.GroupId));
- if(kind=="group") {if(!Guid.TryParse(id,out var groupId)||!ids.Contains(groupId))return KernelHttp.Problem(ctx,404,"schedule_not_found");query=query.Where(x=>x.GroupId==groupId);}else {if(!await query.AnyAsync(x=>x.TeacherUserId==id,ct))return KernelHttp.Problem(ctx,404,"schedule_not_found");query=query.Where(x=>x.TeacherUserId==id);}
- var type=category=="lesson"?EventCategory.Lesson:EventCategory.Assessment;
- var events=await query.Where(x=>x.Category==type && x.StartsAt>=from && x.StartsAt<until).OrderBy(x=>x.StartsAt).ThenBy(x=>x.Id).ToArrayAsync(ct);
- return Results.Ok(events.Select(x=>x.ToDto(groups.Single(g=>g.Id==x.GroupId).Name)).ToArray());
- }).Produces<EventDto[]>();
- }
- private static async Task<Guid[]> AccessibleGroups(Actor actor,IStudentDirectory directory,CancellationToken ct) {
- if(actor.Roles.Contains("Student") && actor.StudentId is not null){var student=await directory.Student(actor.UniversityId,actor.StudentId,ct);return student is null?[]:[student.GroupId];}
- return actor.Grants.Where(g=>g.GroupId.HasValue && (actor.Can(Permissions.ScheduleWrite,actor.UniversityId,g.GroupId)||actor.Can(Permissions.GradesRead,actor.UniversityId,g.GroupId))).Select(g=>g.GroupId!.Value).Distinct().ToArray();
- }
+
+public sealed record CatalogTeacherDto(string Id, string Name);
+public sealed record ScheduleCatalogDto(DirectoryGroup[] Groups, CatalogTeacherDto[] Teachers);
+
+public static class CatalogEndpoints
+{
+    public static void MapCatalog(this IEndpointRouteBuilder endpoints)
+    {
+        // Reading the catalogue never grants access to personal APIs or editing.
+        var api = endpoints.MapGroup("/api/schedule/catalog").AllowAnonymous().WithTags("Schedule");
+        api.MapGet("", async (ICurrentActor current, IConfiguration config, IStudentDirectory directory,
+            AppDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            var university = await University(current, config, ct);
+            if (university is null) return KernelHttp.Problem(ctx, 404, "public_schedule_unavailable");
+            var entries = db.Set<ScheduleEntry>().AsNoTracking().Where(x => x.UniversityId == university);
+            var ids = await entries.Select(x => x.GroupId).Distinct().ToArrayAsync(ct);
+            var groups = await directory.Groups(university.Value, ids, ct);
+            var teachers = await entries.Where(x => x.TeacherUserId != null)
+                .Select(x => new CatalogTeacherDto(x.TeacherUserId!, x.Teacher)).Distinct().ToArrayAsync(ct);
+            return Results.Ok(new ScheduleCatalogDto(groups,
+                teachers.OrderBy(x => x.Name).DistinctBy(x => x.Id).ToArray()));
+        }).Produces<ScheduleCatalogDto>();
+
+        api.MapGet("/events", async (string kind, string id, DateOnly start, DateOnly end, string category,
+            ICurrentActor current, IConfiguration config, IStudentDirectory directory,
+            AppDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            var university = await University(current, config, ct);
+            if (university is null) return KernelHttp.Problem(ctx, 404, "public_schedule_unavailable");
+            if (start.Year < 2000 || end.Year > 2100 || end < start || end.DayNumber - start.DayNumber > 366
+                || category is not ("lesson" or "assessment") || kind is not ("group" or "teacher"))
+                throw new InputValidationException(new Dictionary<string, string[]> { ["query"] = ["Проверьте параметры расписания."] });
+            var query = db.Set<ScheduleEntry>().AsNoTracking().Where(x => x.UniversityId == university);
+            if (kind == "group")
+            {
+                if (!Guid.TryParse(id, out var groupId)) return KernelHttp.Problem(ctx, 404, "schedule_not_found");
+                query = query.Where(x => x.GroupId == groupId);
+            }
+            else query = query.Where(x => x.TeacherUserId == id);
+            if (!await query.AnyAsync(ct)) return KernelHttp.Problem(ctx, 404, "schedule_not_found");
+            var ids = await query.Select(x => x.GroupId).Distinct().ToArrayAsync(ct);
+            var groups = await directory.Groups(university.Value, ids, ct);
+            var from = new DateTimeOffset(start.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(3)).ToUniversalTime();
+            var until = new DateTimeOffset(end.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(3)).ToUniversalTime();
+            var type = category == "lesson" ? EventCategory.Lesson : EventCategory.Assessment;
+            var events = await query.Where(x => x.Category == type && x.StartsAt >= from && x.StartsAt < until)
+                .OrderBy(x => x.StartsAt).ThenBy(x => x.Id).ToArrayAsync(ct);
+            return Results.Ok(events.Select(x => x.ToDto(groups.Single(g => g.Id == x.GroupId).Name)).ToArray());
+        }).Produces<EventDto[]>();
+    }
+
+    private static async Task<Guid?> University(ICurrentActor current, IConfiguration config, CancellationToken ct)
+    {
+        var actor = await current.Get(ct);
+        if (actor is not null) return actor.UniversityId;
+        // The prototype publishes only its known fictional university. Never pick
+        // a tenant from a request parameter or expose every university to guests.
+        return config.GetValue<bool>("Demo:Enabled") ? ScheduleDemo.University : null;
+    }
 }

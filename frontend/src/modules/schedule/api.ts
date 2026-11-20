@@ -40,7 +40,7 @@ export function toEvent(event: ServerEvent): ScheduleEvent {
   const change: Lesson["change"] = event.status === "rescheduled" && event.previous
     ? { status: "rescheduled", ...event.previous, location: { ...event.previous.location, floor: Number(event.previous.location.floor) } }
     : { status: event.status === "cancelled" ? "cancelled" : "scheduled" };
-  return { id: event.id, groupId: event.groupId, groupName: event.groupName, teacherId: "", teacher: event.teacher,
+  return { id: event.id, groupId: event.groupId, groupName: event.groupName, teacherId: event.teacherId ?? "", teacher: event.teacher,
     title: event.title, courseId: event.courseId, kind: event.kind, category: event.category, room: event.room,
     startsAt: event.startsAt, endsAt: event.endsAt, location: { ...event.location, floor: Number(event.location.floor) }, change, serverBacked: true };
 }

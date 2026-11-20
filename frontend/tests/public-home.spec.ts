@@ -1,9 +1,12 @@
 ﻿import { test, expect } from "./test";
 
+import { mockScheduleCatalog } from "./schedule-catalog-http";
+
 test("public home works without API and offers honest public paths", async ({
   page,
 }) => {
   await page.route("**/api/**", (r) => r.abort());
+  await mockScheduleCatalog(page);
   await page.goto("/");
   await expect(
     page.getByRole("heading", {
@@ -18,11 +21,11 @@ test("public home works without API and offers honest public paths", async ({
     page.getByRole("link", { name: "Продолжить как сотрудник" }),
   ).toHaveAttribute("href", "/login");
   await page
-    .getByRole("button", { name: "Расписание без входа", exact: true })
+    .getByRole("link", { name: "Расписание без входа", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText(
-    "Публичное расписание пока недоступно",
-  );
+  await expect(page).toHaveURL(/\/schedule$/);
+  await expect(page.getByRole("heading", { name: "Все расписания" })).toBeVisible();
+  await page.getByRole("link", { name: "На главную", exact: true }).click();
   await page
     .getByRole("button", { name: "Связаться с нами", exact: true })
     .click();
@@ -75,15 +78,17 @@ test("public information supports keyboard and both entry cards reach login", as
   page,
 }) => {
   await page.route("**/api/**", (r) => r.abort());
+  await mockScheduleCatalog(page);
   await page.goto("/");
-  const schedule = page.getByRole("button", {
+  const schedule = page.getByRole("link", {
     name: "Расписание",
     exact: true,
   });
   await schedule.focus();
   await page.keyboard.press("Enter");
-  await expect(schedule).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("status")).toBeFocused();
+  await expect(page).toHaveURL(/\/schedule$/);
+  await expect(page.getByRole("heading", { name: "Все расписания" })).toBeFocused();
+  await page.getByRole("link", { name: "На главную", exact: true }).click();
   await page.getByRole("link", { name: "Продолжить как студент" }).click();
   await expect(page).toHaveURL(/login/);
   await expect(

@@ -51,7 +51,7 @@ export async function buildScheduleXlsx(schedule: ScheduleExport): Promise<Sched
   workbook.title = title;
   const origin = entity.personal
     ? entity.isDemo ? "Демонстрационные данные — сохранены на сервере для учебного профиля." : entity.kind === "teacher" ? "Расписание преподавателя. Данные с сервера." : "Расписание учебной группы. Данные с сервера."
-    : "Демонстрационные данные — не связаны с вашим профилем.";
+    : entity.serverBacked ? "Общее расписание университета. Данные с сервера." : "Демонстрационные данные — не связаны с вашим профилем.";
   workbook.subject = `${period}: ${range}. ${origin}`;
   const sheet = workbook.addWorksheet("Расписание", {
     views: [{ state: "frozen", xSplit: 3, ySplit: 6, showGridLines: false }],

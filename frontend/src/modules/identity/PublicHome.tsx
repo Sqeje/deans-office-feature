@@ -13,8 +13,8 @@ import { Brand, PrototypeNotice } from "../../shared/brand";
 import { Button } from "../../components/ui/button";
 import "./PublicHome.css";
 
-type PublicInfo = "schedule" | "contact";
-function PublicLayout({
+type PublicInfo = "contact";
+export function PublicLayout({
   children,
   infoActions,
 }: {
@@ -50,7 +50,6 @@ export function PublicHome() {
   const toggle = (value: PublicInfo) =>
     setInfo((current) => (current === value ? null : value));
   function action(value: PublicInfo, label: string) {
-    const Icon = value === "schedule" ? CalendarDays : Mail;
     return (
       <button
         type="button"
@@ -59,7 +58,7 @@ export function PublicHome() {
         aria-expanded={info === value}
         onClick={() => toggle(value)}
       >
-        <Icon aria-hidden="true" />
+        <Mail aria-hidden="true" />
         {label}
       </button>
     );
@@ -68,7 +67,7 @@ export function PublicHome() {
     <PublicLayout
       infoActions={
         <>
-          {action("schedule", "Расписание")}
+          <Link className="public-info-action" to="/schedule"><CalendarDays aria-hidden="true" />Расписание</Link>
           {action("contact", "Связаться")}
         </>
       }
@@ -122,7 +121,7 @@ export function PublicHome() {
           </article>
         </section>
         <div className="public-secondary-actions">
-          {action("schedule", "Расписание без входа")}
+          <Link className="public-info-action" to="/schedule"><CalendarDays aria-hidden="true" />Расписание без входа</Link>
           {action("contact", "Связаться с нами")}
         </div>
         <div
@@ -133,16 +132,7 @@ export function PublicHome() {
           tabIndex={-1}
           ref={message}
         >
-          {info === "schedule" ? (
-            <>
-              <h2>Расписание без входа</h2>
-              <p>
-                Публичное расписание пока недоступно. Студентам расписание
-                доступно после входа.
-              </p>
-              <Link to="/login">Войти в кабинет</Link>
-            </>
-          ) : info === "contact" ? (
+          {info === "contact" ? (
             <>
               <h2>Связаться с нами</h2>
               <p>Контакты университета пока не опубликованы.</p>

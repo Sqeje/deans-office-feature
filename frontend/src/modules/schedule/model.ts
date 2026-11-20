@@ -74,7 +74,7 @@ export interface ScheduleEvent extends Lesson {
   courseId?: string | null;
   groupName?: string;
 }
-export type Entity = { kind: "group" | "teacher"; id: string; name?: string; personal?: boolean; isDemo?: boolean };
+export type Entity = { kind: "group" | "teacher"; id: string; name?: string; personal?: boolean; isDemo?: boolean; serverBacked?: boolean };
 export interface EventQuery { entity: Entity; category: "lesson" | "assessment"; start: string; end: string }
 export type EventSource = (query: EventQuery, signal: AbortSignal) => Promise<ScheduleEvent[]>;
 

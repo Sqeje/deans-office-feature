@@ -47,23 +47,66 @@ public sealed class ScheduleTests
         Assert.True((await lessons.Get(ScheduleDemo.University,entry.Id,default))!.IsCancelled);
     }
     [Fact]
-    public async Task CatalogIsAuthenticatedAndUsesTrustedStudentGroup()
+    public async Task AllSchedulesAreSharedWhilePersonalSchedulesAndEditingStayScoped()
     {
         await using var host = await Host.Create();
         using var anonymous = host.Factory.CreateClient();
-        Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/schedule/catalog")).StatusCode);
         using var first = await host.Login("student1@demo.invalid",host.Passwords[0]);
         using var second = await host.Login("schedule-student@demo.invalid",host.Passwords[1]);
+        using var teacher = await host.Login("staff@demo.invalid",host.Passwords[2]);
         var catalog = (await first.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
         var other = (await second.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
-        Assert.Single(catalog.Groups);
-        Assert.Single(other.Groups);
-        Assert.NotEqual(catalog.Groups[0].Id,other.Groups[0].Id);
-        var forged = await first.GetAsync($"/api/schedule/catalog/events?kind=group&id={other.Groups[0].Id}&start=2026-11-11&end=2026-11-11&category=lesson");
-        Assert.Equal(HttpStatusCode.NotFound,forged.StatusCode);
+        var guest = (await anonymous.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
+        var employee = (await teacher.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
+        Assert.Contains(catalog.Groups, g => g.Id == ScheduleDemo.FirstGroup);
+        Assert.Contains(catalog.Groups, g => g.Id == ScheduleDemo.SecondGroup);
+        Assert.Equal(catalog.Groups, other.Groups);
+        Assert.Equal(catalog.Groups, guest.Groups);
+        Assert.Equal(catalog.Groups, employee.Groups);
+        Assert.Equal(catalog.Teachers, guest.Teachers);
+        const string period = "start=2026-11-11&end=2026-11-11&category=lesson";
+        var allPath = $"/api/schedule/catalog/events?kind=group&id={ScheduleDemo.SecondGroup}&{period}";
+        var all = (await first.GetFromJsonAsync<EventDto[]>(allPath))!;
+        Assert.NotEmpty(all);
+        Assert.Equal(all, await anonymous.GetFromJsonAsync<EventDto[]>(allPath));
+        var mine = (await first.GetFromJsonAsync<ScheduleDto>($"/api/schedule/mine?{period}&groupId={ScheduleDemo.SecondGroup}"))!;
+        Assert.All(mine.Events, e => Assert.Equal(ScheduleDemo.FirstGroup, e.GroupId));
+        Assert.DoesNotContain(mine.Events, e => all.Any(x => x.Id == e.Id));
+        var own = (await teacher.GetFromJsonAsync<TeacherScheduleDto>($"/api/schedule/teacher/mine?{period}"))!;
+        Assert.All(own.Events, e => Assert.Equal(own.TeacherId, e.TeacherId));
+        var ownEntry = own.Events.First(e => !e.IsImported);
+        await Csrf(teacher);
+        var saved = await teacher.PutAsJsonAsync($"/api/schedule/{ownEntry.Id}", new UpdateEventRequest(
+            ownEntry.StartsAt, ownEntry.EndsAt, "Ауд. 909", ownEntry.Teacher,
+            ownEntry.Location.Address, ownEntry.Location.Building, ownEntry.Location.Floor, false, ownEntry.Version));
+        saved.EnsureSuccessStatusCode();
+        var guestEvents = (await anonymous.GetFromJsonAsync<EventDto[]>($"/api/schedule/catalog/events?kind=group&id={ownEntry.GroupId}&{period}"))!;
+        Assert.Equal("Ауд. 909", guestEvents.Single(e => e.Id == ownEntry.Id).Room);
+        Assert.All(guestEvents, e => Assert.False(e.CanEdit));
         var events = (await first.GetFromJsonAsync<EventDto[]>($"/api/schedule/catalog/events?kind=group&id={catalog.Groups[0].Id}&start=2026-11-11&end=2026-11-11&category=lesson"))!;
         Assert.NotEmpty(events);
         Assert.All(events,e=>{Assert.Equal(catalog.Groups[0].Id,e.GroupId);Assert.False(e.CanEdit);});
+        await Csrf(first);
+        var entry = all.First();
+        var input = new UpdateEventRequest(entry.StartsAt, entry.EndsAt, entry.Room, entry.Teacher,
+            entry.Location.Address, entry.Location.Building, entry.Location.Floor, false, entry.Version);
+        Assert.Equal(HttpStatusCode.Forbidden, (await first.PutAsJsonAsync($"/api/schedule/{entry.Id}", input)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/schedule/mine?{period}")).StatusCode);
+        using var scope = host.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var foreignUniversity = Guid.NewGuid(); var foreignGroup = Guid.NewGuid();
+        db.Universities.Add(new() { Id = foreignUniversity, Name = "Другой вымышленный вуз" });
+        db.StudyGroups.Add(new() { Id = foreignGroup, UniversityId = foreignUniversity, Name = "Чужая группа" });
+        db.Set<ScheduleEntry>().Add(new() { Id = Guid.NewGuid(), UniversityId = foreignUniversity, GroupId = foreignGroup,
+            Title = "Чужое расписание", Kind = "Лекция", StartsAt = entry.StartsAt, EndsAt = entry.EndsAt,
+            Room = "Ауд. 1", Teacher = "Пример", Address = "Адрес", Building = "1" });
+        await db.SaveChangesAsync();
+        foreach (var reader in new[] { anonymous, first, teacher })
+        {
+            var visible = (await reader.GetFromJsonAsync<ScheduleCatalogDto>($"/api/schedule/catalog?universityId={foreignUniversity}"))!;
+            Assert.DoesNotContain(visible.Groups, g => g.Id == foreignGroup);
+            Assert.Equal(HttpStatusCode.NotFound, (await reader.GetAsync($"/api/schedule/catalog/events?kind=group&id={foreignGroup}&{period}&universityId={foreignUniversity}")).StatusCode);
+        }
     }
     [Fact]
     public async Task StudentScopeStaffAccessCsrfConcurrencyAuditAndPersistentChanges()

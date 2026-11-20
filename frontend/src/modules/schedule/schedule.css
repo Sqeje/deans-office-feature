@@ -1,6 +1,7 @@
 .schedule-page {
   min-width: 0;
 }
+.public-schedule-main { margin: 32px 0; }
 .schedule-page > h1 {
   margin-bottom: 8px;
 }

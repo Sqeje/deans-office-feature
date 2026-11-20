@@ -2,9 +2,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { teachers } from "./catalog";
 import { useSchedulePaths } from "./paths";
-export function TeacherButton({ teacherId }: { teacherId: string }) {
+export function TeacherButton({ teacherId, teacherName }: { teacherId: string; teacherName?: string }) {
   const { base } = useSchedulePaths();
-  const teacher = teachers.find(t => t.id === teacherId);
+  const teacher = teachers.find(t => t.id === teacherId) ?? (teacherName ? { id: teacherId, name: teacherName, shortName: teacherName } : undefined);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null), trigger = useRef<HTMLButtonElement>(null);
   const firstLink = useRef<HTMLAnchorElement>(null);

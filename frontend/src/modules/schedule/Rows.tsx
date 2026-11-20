@@ -10,8 +10,7 @@ import { useSchedulePaths } from "./paths";
 function GroupLink({ id, name, serverBacked }: { id: string; name?: string; serverBacked?: boolean }) {
   const [search] = useSearchParams();
   const { base } = useSchedulePaths();
-  if (serverBacked) return <span>Группа {name}</span>;
-  return <Link to={`${base}/groups/${id}?${search.toString()}`}>Группа {groups.find(g => g.id === id)?.name}</Link>;
+  return <Link to={`${base}/groups/${id}?${search.toString()}`}>Группа {serverBacked ? name : groups.find(g => g.id === id)?.name}</Link>;
 }
 
 function ChangedValue({ changed, description, children }: {
@@ -78,7 +77,7 @@ export function ScheduleRow({ lesson, now, teacherView = false }: { lesson: Less
           <p className="schedule-teacher">
             <UserRound aria-hidden="true" />
             <ChangedValue changed={changed.teacher} description="Преподаватель изменён">
-              {event.teacherId ? <TeacherButton teacherId={event.teacherId} /> : lesson.teacher}
+              {event.teacherId ? <TeacherButton teacherId={event.teacherId} teacherName={lesson.teacher} /> : lesson.teacher}
             </ChangedValue>
           </p>}
       </div>

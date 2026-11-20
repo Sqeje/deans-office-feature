@@ -1,4 +1,5 @@
 import { PublicHome, ApplicantsPage } from "./modules/identity/PublicHome";
+import { PublicSchedulePage } from "./modules/schedule/PublicPage";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Login } from "./modules/identity/Login";
 import { modulePages } from "./modules/sections";
@@ -21,6 +22,7 @@ export function App() {
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/applicants" element={<ApplicantsPage />} />
+        <Route path="/schedule/*" element={<PublicSchedulePage />} />
         <Route path="/app/*" element={<LegacyRedirect />} />
         {(["student", "staff"] as const).map((area) => (
           <Route key={area} path={"/" + area} element={<Cabinet area={area} />}>

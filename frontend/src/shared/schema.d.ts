@@ -1632,6 +1632,7 @@ export interface components {
             canEdit: boolean;
             /** Format: uuid */
             courseId?: null | string;
+            teacherId?: null | string;
         };
         /** @enum {unknown} */
         EventStatus: "scheduled" | "rescheduled" | "cancelled";

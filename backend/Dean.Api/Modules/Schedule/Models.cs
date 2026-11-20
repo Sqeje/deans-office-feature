@@ -82,7 +82,7 @@ public sealed record PlaceDto(string Address, string Building, int Floor);
 public sealed record PreviousDto(DateTimeOffset StartsAt, DateTimeOffset EndsAt, string Room, string Teacher, PlaceDto Location);
 public sealed record EventDto(Guid Id, Guid GroupId, string GroupName, string Title, string Kind, EventCategory Category,
     DateTimeOffset StartsAt, DateTimeOffset EndsAt, string Room, string Teacher, PlaceDto Location,
-    EventStatus Status, PreviousDto? Previous, bool IsImported, bool IsDemo, long Version, bool CanEdit, Guid? CourseId = null);
+    EventStatus Status, PreviousDto? Previous, bool IsImported, bool IsDemo, long Version, bool CanEdit, Guid? CourseId = null, string? TeacherId = null);
 public sealed record ScheduleDto(Guid GroupId, string GroupName, string TimeZone, bool IsDemo, EventDto[] Events);
 public sealed record NextEventDto(EventDto? Event, string TimeZone);
 public sealed record ScheduleContextDto(Guid GroupId, string GroupName, string TimeZone, bool IsDemo);
@@ -96,5 +96,5 @@ public static class ScheduleMapping
     public static EventDto ToDto(this ScheduleEntry e, string groupName, string? teacherUserId = null) => new(e.Id, e.GroupId, groupName, e.Title, e.Kind, e.Category,
         e.StartsAt, e.EndsAt, e.Room, e.Teacher, new(e.Address, e.Building, e.Floor), e.Status,
         e.PreviousStartsAt is { } start && e.PreviousEndsAt is { } end ? new(start, end, e.PreviousRoom!, e.PreviousTeacher!, new(e.PreviousAddress!, e.PreviousBuilding!, e.PreviousFloor!.Value)) : null,
-        e.SourceId is not null, e.IsDemo, e.Version, teacherUserId is not null && e.TeacherUserId == teacherUserId && e.SourceId is null, e.CourseId);
+        e.SourceId is not null, e.IsDemo, e.Version, teacherUserId is not null && e.TeacherUserId == teacherUserId && e.SourceId is null, e.CourseId, e.TeacherUserId);
 }
