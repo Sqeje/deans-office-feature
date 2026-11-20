@@ -11,14 +11,15 @@ public enum RequestStatus
     [JsonStringEnumMemberName("submitted")] Submitted,
     [JsonStringEnumMemberName("in_review")] InReview,
     [JsonStringEnumMemberName("ready")] Ready,
-    [JsonStringEnumMemberName("rejected")] Rejected
+    [JsonStringEnumMemberName("rejected")] Rejected,
+    [JsonStringEnumMemberName("completed")] Completed
 }
 public sealed record RequestInput(string Kind, string? Place = null, int? Copies = null, string? Reason = null, DateOnly? Start = null, DateOnly? End = null);
 public sealed record CreateRequest(Guid OperationId, RequestInput Input);
 public sealed record ChangeStatus(RequestStatus Status, int Version, string? RejectionReason = null);
 public sealed record HistoryDto(RequestStatus Status, DateTimeOffset OccurredAt, string Author, string? RejectionReason);
 public sealed record RequestDto(Guid Id, string Number, string Title, RequestStatus Status, DateTimeOffset SubmittedAt,
-    RequestInput Input, int Version, string? RejectionReason, HistoryDto[] History, string? StudentName = null);
+    RequestInput Input, int Version, string? RejectionReason, HistoryDto[] History, string? StudentName = null, DateTimeOffset? UpdatedAt = null);
 
 public sealed class StudentRequest
 {
@@ -72,8 +73,8 @@ public sealed class RequestConfiguration : IEntityTypeConfiguration<StudentReque
         b.HasOne<StudyGroup>().WithMany().HasForeignKey(x => new { x.GroupId, x.UniversityId })
             .HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
         b.ToTable(t => {
-            t.HasCheckConstraint("CK_Request_Status", "\"Status\" IN ('submitted','in_review','ready','rejected')");
-            t.HasCheckConstraint("CK_Request_Input", "(\"Kind\" = 'certificate' AND \"Place\" IS NOT NULL AND length(trim(\"Place\")) > 0 AND \"Copies\" BETWEEN 1 AND 5 AND \"Copies\" IS NOT NULL AND \"Reason\" IS NULL AND \"Start\" IS NULL AND \"End\" IS NULL) OR (\"Kind\" = 'statement' AND \"Reason\" IS NOT NULL AND length(trim(\"Reason\")) > 0 AND \"Start\" IS NOT NULL AND \"End\" IS NOT NULL AND \"End\" >= \"Start\" AND \"Place\" IS NULL AND \"Copies\" IS NULL)");
+            t.HasCheckConstraint("CK_Request_Status", "\"Status\" IN ('submitted','in_review','ready','rejected','completed')");
+            t.HasCheckConstraint("CK_Request_Input", RequestCatalog.InputConstraint);
         });
     }
 }
@@ -90,7 +91,7 @@ public sealed class RequestHistoryConfiguration : IEntityTypeConfiguration<Reque
         b.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => new { x.ActorId, x.UniversityId })
             .HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
         b.ToTable(t => {
-            t.HasCheckConstraint("CK_RequestHistory_Status", "\"Status\" IN ('submitted','in_review','ready','rejected')");
+            t.HasCheckConstraint("CK_RequestHistory_Status", "\"Status\" IN ('submitted','in_review','ready','rejected','completed')");
             t.HasCheckConstraint("CK_RequestHistory_Reason", "(\"Status\" = 'rejected' AND \"RejectionReason\" IS NOT NULL AND length(trim(\"RejectionReason\")) > 0) OR (\"Status\" <> 'rejected' AND \"RejectionReason\" IS NULL)");
         });
     }

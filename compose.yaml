@@ -19,6 +19,7 @@ services:
     environment: &api-environment
       ConnectionStrings__Database: Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Demo__Enabled: ${Demo__Enabled:-false}
+      Demo__Requests: ${Demo__Requests:-true}
       Demo__Password1: ${Demo__Password1:-}
       Demo__Password2: ${Demo__Password2:-}
       Demo__StaffPassword: ${Demo__StaffPassword:-}

@@ -217,6 +217,64 @@ public sealed class RequestsTests
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token.Token);
     }
 
+    [Fact]
+    public async Task CatalogFormsPersistAndOnlyStaffCanConfirmCompletion()
+    {
+        await using var env = await TestApp.Create();
+        using var student = await env.Login("student1@demo.invalid", env.Password1);
+        using var other = await env.Login("student2@demo.invalid", env.Password2);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
+        await Csrf(student); await Csrf(staff);
+        foreach (var type in RequestCatalog.Entries)
+        {
+            var input = type.Form switch {
+                "certificate" => new RequestInput(type.Kind, "По месту требования", 1, "Уточнение к справке"),
+                "period" => new RequestInput(type.Kind, Reason: "Учебный проект", Start: new(2026, 11, 20), End: new(2026, 11, 25)),
+                _ => new RequestInput(type.Kind, Reason: "Уточнить порядок подачи")
+            };
+            var created = await student.PostAsJsonAsync("/api/requests/student", new CreateRequest(Guid.NewGuid(), input));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var row = (await created.Content.ReadFromJsonAsync<RequestDto>())!;
+            Assert.Equal(type.Title, row.Title); Assert.Equal(input, row.Input);
+            Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/requests/student/{row.Id}")).StatusCode);
+        }
+        var request = (await student.GetFromJsonAsync<RequestDto[]>("/api/requests/student"))!.First();
+        var url = $"/api/requests/staff/{request.Id}/status";
+        Assert.Equal(HttpStatusCode.Forbidden, (await student.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.Completed, 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.Completed, 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.InReview, 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.Ready, 2))).StatusCode);
+        var result = await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.Completed, 3));
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        var completed = (await result.Content.ReadFromJsonAsync<RequestDto>())!;
+        Assert.Equal(RequestStatus.Completed, completed.Status); Assert.Equal(4, completed.History.Length);
+        Assert.NotNull(completed.UpdatedAt);
+        Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync(url, new ChangeStatus(RequestStatus.InReview, 4))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/requests/student", new CreateRequest(Guid.NewGuid(), new("bank_card", Place: "Invalid", Copies: 1, Reason: "Test")))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/requests/student", new CreateRequest(Guid.NewGuid(), new("academic_leave", Reason: "Missing dates")))).StatusCode);
+    }
+
+    [Fact]
+    public async Task DemoRequestsAreIdempotentAndNotificationLinksToUncollectedDocument()
+    {
+        await using var env = await TestApp.Create();
+        using var scope = env.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var university = Guid.Parse("10000000-0000-0000-0000-000000000001");
+        var notifications = scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.Notifications.IRequestNotifications>();
+        await RequestDemoSeed.Run(db, notifications, university);
+        await RequestDemoSeed.Run(db, notifications, university);
+        var rows = await db.Set<StudentRequest>().Include(x => x.History).ToArrayAsync();
+        Assert.Equal(2, rows.Length);
+        Assert.Equal(4, rows.Single(x => x.Status == "completed").History.Count);
+        var ready = rows.Single(x => x.Status == "ready");
+        var message = await db.Set<Dean.Api.Modules.Notifications.Message>().SingleAsync();
+        Assert.Equal(ready.Id, message.RelatedId); Assert.Contains("ещё не получен", message.Text);
+        Assert.Empty(await db.Set<Dean.Api.Modules.Notifications.MessageRead>().ToArrayAsync());
+        using var other = await env.Login("student2@demo.invalid", env.Password2);
+        Assert.Empty((await other.GetFromJsonAsync<RequestDto[]>("/api/requests/student"))!);
+    }
+
     private sealed class TestClock : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(2026, 11, 10, 12, 0, 0, TimeSpan.Zero);

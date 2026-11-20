@@ -1807,6 +1807,8 @@ export interface components {
             rejectionReason: null | string;
             history: components["schemas"]["HistoryDto"][];
             studentName?: null | string;
+            /** Format: date-time */
+            updatedAt?: null | string;
         };
         RequestInput: {
             kind: string;
@@ -1820,7 +1822,7 @@ export interface components {
             end?: null | string;
         };
         /** @enum {unknown} */
-        RequestStatus: "submitted" | "in_review" | "ready" | "rejected";
+        RequestStatus: "submitted" | "in_review" | "ready" | "rejected" | "completed";
         /** @enum {unknown} */
         ResultStatus: "pending" | "passed" | "debt";
         SaveJournalRequest: {
