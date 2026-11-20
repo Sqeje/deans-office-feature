@@ -43,7 +43,7 @@ public static class DemoSeed
         await db.SaveChangesAsync();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (var role in new[] { "Student", "Staff" })
+        foreach (var role in new[] { "Student", "Staff", "Teacher", "Dean" })
         if (!await roles.RoleExistsAsync(role))
             Check(await roles.CreateAsync(new(role)));
         string? teacherId = null;
@@ -51,6 +51,7 @@ public static class DemoSeed
         {
             var email = i < 2 ? $"student{i + 1}@demo.invalid" : "staff@demo.invalid";
             var user = await users.FindByEmailAsync(email);
+            var created = user is null;
             if (user is null)
             {
                 user = new()
@@ -72,11 +73,12 @@ public static class DemoSeed
             if (i == 2)
             {
                 teacherId = user.Id;
-                if (!await db.StaffGrants.AnyAsync(g => g.UserId == user.Id && g.UniversityId == universityId && g.Permission == Permissions.ScheduleWrite && g.GroupId == ScheduleDemo.SecondGroup))
+                if (created && !await users.IsInRoleAsync(user, "Teacher")) Check(await users.AddToRoleAsync(user, "Teacher"));
+                if (created && !await db.StaffGrants.AnyAsync(g => g.UserId == user.Id && g.UniversityId == universityId && g.Permission == Permissions.ScheduleWrite && g.GroupId == ScheduleDemo.SecondGroup))
                     db.StaffGrants.Add(new() { Id = Guid.NewGuid(), UserId = user.Id, UniversityId = universityId, Permission = Permissions.ScheduleWrite, GroupId = ScheduleDemo.SecondGroup });
             }
             var role = i < 2 ? "Student" : "Staff";
-            if (!await users.IsInRoleAsync(user, role))
+            if (created && !await users.IsInRoleAsync(user, role))
                 Check(await users.AddToRoleAsync(user, role));
             if (i < 2)
             {
@@ -89,8 +91,8 @@ public static class DemoSeed
                     StudyGroupId = targetGroup
                 });
             }
-            if (i == 2)
-                foreach (var permission in Permissions.All)
+            if (i == 2 && created)
+                foreach (var permission in new[] { Permissions.ScheduleWrite, Permissions.GradesRead, Permissions.JournalWrite, Permissions.GradesWrite })
                 {
                     Guid? target = Permissions.IsUniversityWide(permission) ? null : groupId;
                     if (!await db.StaffGrants.AnyAsync(x => x.UserId == user.Id && x.UniversityId == universityId && x.Permission == permission && x.GroupId == target))
@@ -106,7 +108,12 @@ public static class DemoSeed
             await db.SaveChangesAsync();
         }
         await Dean.Api.Modules.AcademicPerformance.AcademicDemoSeed.Run(db, universityId, groupId);
-        await scope.ServiceProvider.GetRequiredService<ScheduleDemo>().Initialize(teacherId!);
+        // Fresh workplace fixtures use a coherent two-week calendar. Existing legacy entries are preserved.
+        await scope.ServiceProvider.GetRequiredService<WorkplaceDemo>().Initialize();
+        await StaffDemoSeed.Run(db, users, passwords[2]!, universityId);
+        await StaffDemoSeed.UpgradeKnownAccounts(db, users, universityId);
+        await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.AcademicPerformance.WorkplaceAcademicDemoSeed>().Initialize();
+        await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.Requests.WorkplaceRequestsDemoSeed>().Initialize();
     }
     private static void Check(IdentityResult result)
     {

@@ -71,6 +71,7 @@ export interface ScheduleEvent extends Lesson {
   category: "lesson" | "assessment";
   assessmentResult?: "passed" | "absent" | "failed";
   serverBacked?: boolean;
+  courseId?: string | null;
   groupName?: string;
 }
 export type Entity = { kind: "group" | "teacher"; id: string; name?: string; personal?: boolean; isDemo?: boolean };

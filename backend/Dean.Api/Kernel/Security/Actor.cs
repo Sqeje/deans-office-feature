@@ -7,17 +7,20 @@ public static class Permissions
 {
     public const string RequestsManage = "requests.manage";
     public const string ScheduleWrite = "schedule.write";
+    public const string GradesRead = "grades.read";
+    public const string JournalWrite = "journal.write";
+    public const string GradesCorrect = "grades.correct";
     public const string GradesWrite = "grades.write";
     public const string AnnouncementsPublish = "announcements.publish";
     public const string SourcesManage = "sources.manage";
-    public static readonly string[] All = [RequestsManage, ScheduleWrite, GradesWrite, AnnouncementsPublish, SourcesManage];
+    public static readonly string[] All = [RequestsManage, ScheduleWrite, GradesRead, JournalWrite, GradesCorrect, GradesWrite, AnnouncementsPublish, SourcesManage];
     public static bool IsUniversityWide(string p) => p is AnnouncementsPublish or SourcesManage;
 }
 public sealed record PermissionGrant(string Permission, Guid? GroupId);
 public sealed record Actor(string UserId, Guid UniversityId, string DisplayName, string[] Roles, string? StudentId, PermissionGrant[] Grants)
 {
     public bool Can(string permission, Guid universityId, Guid? groupId) =>
-        UniversityId == universityId && Roles.Contains("Staff") && Permissions.All.Contains(permission) &&
+        UniversityId == universityId && Roles.Contains("Staff") && Permissions.All.Contains(permission) && (permission != Permissions.GradesCorrect || Roles.Contains("Dean")) &&
         Grants.Any(g => g.Permission == permission &&
             (Permissions.IsUniversityWide(permission)
                 ? g.GroupId is null

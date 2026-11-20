@@ -51,6 +51,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
         o.KnownProxies.Add(IPAddress.Parse(proxy));
 });
 var app = builder.Build();
+if (args.Contains("--staff-access")) { await StaffProvisioning.Run(app.Services, args); return; }
 if (args.Contains("--initialize")) { await DemoSeed.Run(app.Services, app.Configuration); return; }
 app.UseForwardedHeaders();
 app.UseKernelHttp();

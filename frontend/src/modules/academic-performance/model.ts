@@ -13,6 +13,7 @@ export interface CurrentGrade {
   value: Grade;
 }
 export interface Discipline {
+  version?: number;
   isLocal?: boolean;
   teacher?: string;
   assessmentDate?: string;

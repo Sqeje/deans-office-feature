@@ -1,37 +1,10 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { api, ApiError, type Profile } from "../../shared/api";
-import { useSession } from "../../shared/session";
-import { Denied, EmptyState, ErrorState, Loading } from "../../shared/states";
+
+import { Denied, ErrorState, Loading } from "../../shared/states";
 export { StudentHome } from "./StudentHome";
-const permissionLabels: Record<string, string> = {
-  "requests.manage": "Обработка обращений",
-  "schedule.write": "Изменение расписания",
-  "grades.write": "Внесение оценок",
-  "announcements.publish": "Публикация объявлений",
-  "sources.manage": "Управление подключениями",
-};
-export function StaffHome() {
-  const { session } = useSession();
-  return (
-    <>
-      <p className="text-sm text-slate-500">РАБОЧЕЕ МЕСТО СОТРУДНИКА</p>
-      <h1>Здравствуйте, {session?.displayName}</h1>
-      <EmptyState
-        title="Ваши полномочия"
-        text="Разделы доступны согласно назначенным разрешениям. Рабочие операции появятся в следующих срезах."
-      />
-      <ul className="card mt-4 space-y-3">
-        {session?.permissions.map((p, i) => (
-          <li key={i} className="break-words">
-            {permissionLabels[p.permission] ?? "Дополнительное разрешение"} —{" "}
-            {p.groupId ? "Назначенная группа" : "Свой университет"}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
+export { StaffHome } from "./StaffHome";
 export function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>();
   const [error, setError] = useState(false);

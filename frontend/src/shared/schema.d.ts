@@ -151,6 +151,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/identity/staff-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffContextResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/identity/me": {
         parameters: {
             query?: never;
@@ -463,6 +512,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/schedule/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleCatalogDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schedule/catalog/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    kind: string;
+                    id: string;
+                    start: string;
+                    end: string;
+                    category: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications/student": {
         parameters: {
             query?: never;
@@ -614,6 +739,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/academic-performance/staff/courses/{courseId}/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JournalResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/lessons/{lessonId}/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    lessonId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveJournalRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/academic-performance/semesters": {
         parameters: {
             query?: never;
@@ -710,6 +918,93 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/teaching-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeachingAssignmentDto"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/students/{studentId}/courses/{courseId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    studentId: string;
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinalResultHistory"][];
+                    };
                 };
             };
         };
@@ -1251,6 +1546,12 @@ export interface components {
     schemas: {
         /** @enum {unknown} */
         AssessmentKind: "exam" | "credit";
+        /** @enum {unknown} */
+        AttendanceMark: "unmarked" | "present" | "absent";
+        CatalogTeacherDto: {
+            id: string;
+            name: string;
+        };
         ChangeStatus: {
             status: components["schemas"]["RequestStatus"];
             /** Format: int32 */
@@ -1298,6 +1599,11 @@ export interface components {
             status: components["schemas"]["ResultStatus"];
             debtReason: null | string;
             isLocal: boolean;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            version: number | string;
         };
         /** @enum {unknown} */
         EventCategory: "lesson" | "assessment";
@@ -1324,6 +1630,8 @@ export interface components {
             /** Format: int64 */
             version: number | string;
             canEdit: boolean;
+            /** Format: uuid */
+            courseId?: null | string;
         };
         /** @enum {unknown} */
         EventStatus: "scheduled" | "rescheduled" | "cancelled";
@@ -1334,12 +1642,67 @@ export interface components {
         };
         /** @enum {unknown} */
         FinalKind: "pending" | "grade" | "credit" | "failed-credit";
+        FinalResultHistory: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            universityId?: string;
+            /** Format: uuid */
+            resultId?: string;
+            /** Format: int64 */
+            version?: number | string;
+            previousKind?: components["schemas"]["FinalKind"];
+            /** Format: int32 */
+            previousValue?: null | number | string;
+            kind?: components["schemas"]["FinalKind"];
+            /** Format: int32 */
+            value?: null | number | string;
+            actorId?: string;
+            reason?: null | string;
+            /** Format: date-time */
+            changedAt?: string;
+        };
         HistoryDto: {
             status: components["schemas"]["RequestStatus"];
             /** Format: date-time */
             occurredAt: string;
             author: string;
             rejectionReason: null | string;
+        };
+        JournalLessonDto: {
+            /** Format: uuid */
+            lessonId: string;
+            /** Format: date-time */
+            startsAt: string;
+            subject: string;
+            isCancelled: boolean;
+            canEdit: boolean;
+            readOnlyReason: null | string;
+            /** Format: int64 */
+            version: number | string;
+            rows: components["schemas"]["JournalRowDto"][];
+        };
+        JournalResponse: {
+            /** Format: uuid */
+            courseId: string;
+            courseName: string;
+            /** Format: uuid */
+            groupId: string;
+            semesterId: string;
+            lessons: components["schemas"]["JournalLessonDto"][];
+        };
+        JournalRowDto: {
+            studentId: string;
+            fullName: string;
+            /** Format: int32 */
+            grade: null | number | string;
+            attendance: components["schemas"]["AttendanceMark"];
+        };
+        JournalRowInput: {
+            studentId: string;
+            /** Format: int32 */
+            grade: null | number | string;
+            attendance: components["schemas"]["AttendanceMark"];
         };
         LoginRequest: {
             email: string;
@@ -1394,7 +1757,7 @@ export interface components {
             nextExam: null | components["schemas"]["NextExamDto"];
         };
         /** @enum {unknown} */
-        PermissionCode: "requests.manage" | "schedule.write" | "grades.write" | "announcements.publish" | "sources.manage";
+        PermissionCode: "requests.manage" | "schedule.write" | "grades.read" | "journal.write" | "grades.correct" | "grades.write" | "announcements.publish" | "sources.manage";
         PermissionGrantResponse: {
             permission: components["schemas"]["PermissionCode"];
             /** Format: uuid */
@@ -1460,10 +1823,25 @@ export interface components {
         RequestStatus: "submitted" | "in_review" | "ready" | "rejected";
         /** @enum {unknown} */
         ResultStatus: "pending" | "passed" | "debt";
+        SaveJournalRequest: {
+            /** Format: int64 */
+            version: number | string;
+            rows: components["schemas"]["JournalRowInput"][];
+        };
         SaveResultRequest: {
             kind: components["schemas"]["FinalKind"];
             /** Format: int32 */
             value: null | number | string;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            version: number | string;
+            reason?: null | string;
+        };
+        ScheduleCatalogDto: {
+            groups: components["schemas"]["DirectoryGroup"][];
+            teachers: components["schemas"]["CatalogTeacherDto"][];
         };
         ScheduleContextDto: {
             /** Format: uuid */
@@ -1498,6 +1876,27 @@ export interface components {
             permissions: components["schemas"]["PermissionGrantResponse"][];
             areas: string[];
         };
+        StaffAssignmentResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            /** Format: uuid */
+            groupId: string;
+            semesterId: string;
+            courseName: string;
+        };
+        StaffContextResponse: {
+            roles: string[];
+            groups: components["schemas"]["StaffGroupResponse"][];
+            assignments: components["schemas"]["StaffAssignmentResponse"][];
+        };
+        StaffGroupResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            actions: components["schemas"]["PermissionCode"][];
+        };
         TeacherContextDto: {
             teacherId: string;
             teacherName: string;
@@ -1510,6 +1909,16 @@ export interface components {
             timeZone: string;
             isDemo: boolean;
             events: components["schemas"]["EventDto"][];
+        };
+        TeachingAssignmentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            /** Format: uuid */
+            groupId: string;
+            semesterId: string;
+            courseName: string;
         };
         UpdateEventRequest: {
             /** Format: date-time */

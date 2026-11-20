@@ -25,6 +25,7 @@ function ChangedValue({ changed, description, children }: {
 }
 
 export function ScheduleRow({ lesson, now, teacherView = false }: { lesson: Lesson; now: Date; teacherView?: boolean }) {
+  const { staff } = useSchedulePaths();
   const current = isCurrent(lesson, now);
   const event = lesson as Partial<ScheduleEvent>;
   const outcome = assessmentOutcome({ ...lesson, category: event.category, assessmentResult: event.assessmentResult }, now);
@@ -55,6 +56,7 @@ export function ScheduleRow({ lesson, now, teacherView = false }: { lesson: Less
       </p>
       <div className="schedule-details">
         <h3>{lesson.title}</h3>
+        {staff && event.courseId && event.category === "lesson" && <Link to={`/staff/academic-performance?view=journal&course=${encodeURIComponent(event.courseId)}&lesson=${encodeURIComponent(lesson.id)}`}>Открыть журнал</Link>}
         <div className="schedule-meta muted">
           <p className={event.category === "assessment" ? "schedule-assessment-kind" : undefined}>{lesson.kind}</p>
         </div>

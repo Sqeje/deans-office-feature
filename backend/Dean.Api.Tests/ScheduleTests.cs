@@ -17,6 +17,55 @@ using Xunit;
 public sealed class ScheduleTests
 {
     [Fact]
+    public async Task JournalLessonLockSerializesCancellationAndRereadsCommittedStatus()
+    {
+        await using var host = await Host.Create();
+        using var scope = host.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var course = await db.Set<Dean.Api.Modules.AcademicPerformance.AcademicCourse>().FirstAsync(x => x.GroupId == ScheduleDemo.FirstGroup);
+        var entry = await db.Set<ScheduleEntry>().FirstAsync(x => x.GroupId == course.GroupId && x.SourceId == null && x.Category == EventCategory.Lesson);
+        entry.CourseId = course.Id;
+        await db.SaveChangesAsync();
+        var lessons = scope.ServiceProvider.GetRequiredService<IScheduleJournalLessons>();
+        await using var journalTransaction = await db.Database.BeginTransactionAsync();
+        Assert.NotNull(await lessons.GetForUpdate(ScheduleDemo.University, entry.Id, default));
+        await using var connection = new NpgsqlConnection(db.Database.GetConnectionString());
+        await connection.OpenAsync();
+        await using (var cancellation = await connection.BeginTransactionAsync())
+        {
+            await new NpgsqlCommand("SET LOCAL lock_timeout = '200ms'", connection, cancellation).ExecuteNonQueryAsync();
+            var update = new NpgsqlCommand("UPDATE \"ScheduleEntries\" SET \"Status\" = 2 WHERE \"Id\" = @id", connection, cancellation);
+            update.Parameters.AddWithValue("id",entry.Id);
+            var failure = await Assert.ThrowsAsync<PostgresException>(() => update.ExecuteNonQueryAsync());
+            Assert.Equal(PostgresErrorCodes.LockNotAvailable,failure.SqlState);
+            await cancellation.RollbackAsync();
+        }
+        await journalTransaction.CommitAsync();
+        var retry = new NpgsqlCommand("UPDATE \"ScheduleEntries\" SET \"Status\" = 2 WHERE \"Id\" = @id", connection);
+        retry.Parameters.AddWithValue("id",entry.Id);
+        Assert.Equal(1,await retry.ExecuteNonQueryAsync());
+        Assert.True((await lessons.Get(ScheduleDemo.University,entry.Id,default))!.IsCancelled);
+    }
+    [Fact]
+    public async Task CatalogIsAuthenticatedAndUsesTrustedStudentGroup()
+    {
+        await using var host = await Host.Create();
+        using var anonymous = host.Factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized,(await anonymous.GetAsync("/api/schedule/catalog")).StatusCode);
+        using var first = await host.Login("student1@demo.invalid",host.Passwords[0]);
+        using var second = await host.Login("schedule-student@demo.invalid",host.Passwords[1]);
+        var catalog = (await first.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
+        var other = (await second.GetFromJsonAsync<ScheduleCatalogDto>("/api/schedule/catalog"))!;
+        Assert.Single(catalog.Groups);
+        Assert.Single(other.Groups);
+        Assert.NotEqual(catalog.Groups[0].Id,other.Groups[0].Id);
+        var forged = await first.GetAsync($"/api/schedule/catalog/events?kind=group&id={other.Groups[0].Id}&start=2026-11-11&end=2026-11-11&category=lesson");
+        Assert.Equal(HttpStatusCode.NotFound,forged.StatusCode);
+        var events = (await first.GetFromJsonAsync<EventDto[]>($"/api/schedule/catalog/events?kind=group&id={catalog.Groups[0].Id}&start=2026-11-11&end=2026-11-11&category=lesson"))!;
+        Assert.NotEmpty(events);
+        Assert.All(events,e=>{Assert.Equal(catalog.Groups[0].Id,e.GroupId);Assert.False(e.CanEdit);});
+    }
+    [Fact]
     public async Task StudentScopeStaffAccessCsrfConcurrencyAuditAndPersistentChanges()
     {
         await using var host = await Host.Create();
@@ -240,6 +289,10 @@ public sealed class ScheduleTests
                 using var scope = h.Factory.Services.CreateScope();
                 var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // This regression fixture deliberately exercises the previous schedule generation.
+                await db.Set<ScheduleEntry>().Where(x => x.IsDemo && x.CourseId != null).ExecuteDeleteAsync();
+                var legacyTeacher = await users.FindByEmailAsync("staff@demo.invalid");
+                await scope.ServiceProvider.GetRequiredService<ScheduleDemo>().Initialize(legacyTeacher!.Id);
                 var student = new ApplicationUser { UserName = "schedule-student@demo.invalid", Email = "schedule-student@demo.invalid", UniversityId = ScheduleDemo.University, DisplayName = "Schedule test" };
                 Assert.True((await users.CreateAsync(student, h.Passwords[1])).Succeeded);
                 Assert.True((await users.AddToRoleAsync(student, "Student")).Succeeded);

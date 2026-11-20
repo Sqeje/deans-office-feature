@@ -33,6 +33,7 @@ public sealed class AcademicResult
     public FinalKind Kind { get; set; }
     public int? Value { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public long Version { get; set; }
     // This slice writes local results only. A future importer must preserve ownership.
     public string? SourceId { get; set; }
     public List<AcademicGrade> Grades { get; set; } = [];
@@ -71,8 +72,8 @@ public sealed record SemestersResponse(SemesterDto[] Semesters, string? DefaultS
 public sealed record CurrentGradeDto(Guid Id, DateOnly Date, string Activity, int Value);
 public sealed record FinalDto(FinalKind Kind, int? Value);
 public sealed record DisciplineDto(Guid Id, string Name, string? Teacher, AssessmentKind Assessment,
-    DateOnly? AssessmentDate, CurrentGradeDto[] Grades, FinalDto? Final, ResultStatus Status, string? DebtReason, bool IsLocal);
+    DateOnly? AssessmentDate, CurrentGradeDto[] Grades, FinalDto? Final, ResultStatus Status, string? DebtReason, bool IsLocal, long Version = 0);
 public sealed record NextExamDto(Guid CourseId, string Name, DateOnly Date);
 public sealed record PerformanceSummary(int Total, int Passed, int Debts, decimal? Average, int Credits, NextExamDto? NextExam);
 public sealed record PerformanceResponse(string SemesterId, DisciplineDto[] Disciplines, PerformanceSummary Summary);
-public sealed record SaveResultRequest(FinalKind Kind, int? Value);
+public sealed record SaveResultRequest(FinalKind Kind, int? Value, long Version = 0, string? Reason = null);

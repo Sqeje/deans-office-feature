@@ -23,7 +23,7 @@ public sealed class RequestsTests
         await using var env = await TestApp.Create();
         using var first = await env.Login("student1@demo.invalid", env.Password1);
         using var other = await env.Login("student2@demo.invalid", env.Password2);
-        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
         var input = new { universityId = Guid.NewGuid(), studentId = "forged", operationId = Guid.NewGuid(), input = new { kind = "certificate", place = "По месту требования", copies = 2 } };
         Assert.Equal(HttpStatusCode.BadRequest, (await first.PostAsJsonAsync("/api/requests/student", input)).StatusCode);
         await Csrf(first);
@@ -55,7 +55,7 @@ public sealed class RequestsTests
     {
         await using var env = await TestApp.Create();
         using var student = await env.Login("student1@demo.invalid", env.Password1);
-        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
         await Csrf(student); await Csrf(staff);
         foreach (var input in new RequestInput[] { new("certificate", " ", 1), new("certificate", "Test", 6), new("statement", Reason: "Test", Start: new(2026, 11, 20), End: new(2026, 11, 10)), new("unknown") })
             Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/requests/student", new CreateRequest(Guid.NewGuid(), input))).StatusCode);
@@ -83,7 +83,7 @@ public sealed class RequestsTests
     {
         await using var env = await TestApp.Create();
         using var student = await env.Login("student1@demo.invalid", env.Password1);
-        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
         using var anonymous = env.Factory.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/requests/student")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await student.GetAsync("/api/requests/staff/groups")).StatusCode);
@@ -124,6 +124,7 @@ public sealed class RequestsTests
         var grades = await db.Set<Dean.Api.Modules.AcademicPerformance.AcademicGrade>().CountAsync();
         var migrator = db.Database.GetService<IMigrator>();
         // This test database has no requests; recreate the previous schema before testing upgrade.
+        await RemoveNewAcademicGrants(db);
         await migrator.MigrateAsync("20261110120120_AcademicPerformance");
         await migrator.MigrateAsync();
         Assert.Equal(users, await db.Users.CountAsync());
@@ -134,9 +135,17 @@ public sealed class RequestsTests
     public async Task NotificationsPersistAndAnnouncementsRequirePermission()
     {
         await using var env = await TestApp.Create();
+        // Publishing is an explicit duty for this test, not a default teaching/dean privilege.
+        using (var scope = env.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var publisher = await db.Users.SingleAsync(x => x.Email == "dean1@demo.invalid");
+            db.StaffGrants.Add(new() { Id = Guid.NewGuid(), UserId = publisher.Id, UniversityId = publisher.UniversityId, Permission = Permissions.AnnouncementsPublish });
+            await db.SaveChangesAsync();
+        }
         using var student = await env.Login("student1@demo.invalid", env.Password1);
         using var other = await env.Login("student2@demo.invalid", env.Password2);
-        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
         using var anon = env.Factory.CreateClient();
         const string feed = "/api/notifications/student";
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync(feed)).StatusCode);
@@ -148,6 +157,7 @@ public sealed class RequestsTests
         using (var scope = env.Factory.Services.CreateScope()) {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var migrator = db.Database.GetService<IMigrator>();
+            await RemoveNewAcademicGrants(db);
             await migrator.MigrateAsync("20261113113424_RequestsPersistence"); await migrator.MigrateAsync();
             Assert.Equal(request.Id, (await db.Set<StudentRequest>().SingleAsync()).Id);
         }
@@ -179,7 +189,7 @@ public sealed class RequestsTests
         const string publish = "/api/notifications/staff/announcements";
         var input = new { operationId = Guid.NewGuid(), title = "Объявление", text = "Текст" };
         Assert.Equal(HttpStatusCode.Forbidden, (await student.PostAsJsonAsync(publish, input)).StatusCode);
-        using var noCsrf = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var noCsrf = await env.Login("dean1@demo.invalid", env.StaffPassword);
         Assert.Equal(HttpStatusCode.BadRequest, (await noCsrf.PostAsJsonAsync(publish, input)).StatusCode);
         var publications = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => staff.PostAsJsonAsync(publish, input)));
         Assert.Single(publications, x => x.StatusCode == HttpStatusCode.Created);
@@ -195,6 +205,10 @@ public sealed class RequestsTests
         }
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync(publish, new { operationId = Guid.NewGuid(), title = "Title", text = "Text" })).StatusCode);
     }
+
+    private static Task<int> RemoveNewAcademicGrants(AppDbContext db) => db.StaffGrants
+        .Where(g => g.Permission == Permissions.GradesRead || g.Permission == Permissions.JournalWrite || g.Permission == Permissions.GradesCorrect)
+        .ExecuteDeleteAsync();
 
     private static async Task Csrf(HttpClient client)
     {
@@ -242,6 +256,13 @@ public sealed class RequestsTests
                     .ConfigureAppConfiguration((_, c) => c.AddConfiguration(result.Config))
                     .ConfigureServices(s => s.AddSingleton<TimeProvider>(new TestClock())));
                 await DemoSeed.Run(result.Factory.Services, result.Config);
+                // These endpoint tests create their own requests; demo enrichment is covered separately.
+                using (var scope = result.Factory.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    await db.Set<RequestHistory>().ExecuteDeleteAsync();
+                    await db.Set<StudentRequest>().ExecuteDeleteAsync();
+                }
                 return result;
             }
             catch { await result.DisposeAsync(); throw; }

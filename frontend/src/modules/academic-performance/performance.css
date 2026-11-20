@@ -904,3 +904,18 @@
   gap: 4px;
   overflow-wrap: anywhere;
 }
+.staff-links { display:flex; flex-wrap:wrap; gap:16px; margin:16px 0; }
+.staff-links a { color:var(--color-primary); text-decoration:underline; }
+.staff-links [aria-current=page] { font-weight:700; }
+.staff-assignment { padding:16px 0; border-bottom:1px solid var(--color-border); overflow-wrap:anywhere; }
+.journal-student { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; min-width:0; border-bottom:1px solid var(--color-border); padding:16px 0; }
+.journal-student legend { font-weight:600; overflow-wrap:anywhere; }
+.journal-student select { width:100%; min-width:0; }
+.staff-reason { display:block; width:100%; min-height:88px; padding:12px; border:1px solid var(--color-control-border); border-radius:10px; }
+@media(max-width:767px) { .journal-student { grid-template-columns:minmax(0,1fr); } }
+.staff-next { background:linear-gradient(110deg,var(--color-primary-soft),var(--color-hero-end)); }
+.performance-staff { min-width:0; }
+.performance-staff > .select-field { min-width:0; max-width:100%; }
+.performance-staff > .select-field select { width:100%; min-width:0; max-width:100%; }
+.performance-result-form { min-width:0; }
+.performance-result-form button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }

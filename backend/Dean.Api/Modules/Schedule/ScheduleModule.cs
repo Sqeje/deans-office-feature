@@ -14,6 +14,8 @@ public sealed class ScheduleModule : IAppModule
         services.AddScoped<ScheduleInterpreter>();
         services.AddScoped<ScheduleImportApplier>();
         services.AddScoped<ScheduleDemo>();
+        services.AddScoped<WorkplaceDemo>();
+        services.AddScoped<IScheduleJournalLessons, ScheduleJournalLessons>();
     }
-    public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapSchedule();
+    public void MapEndpoints(IEndpointRouteBuilder endpoints) { endpoints.MapSchedule(); endpoints.MapCatalog(); }
 }

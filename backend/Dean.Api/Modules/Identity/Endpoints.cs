@@ -45,6 +45,17 @@ public static class Endpoints
             return Results.Ok(new SessionResponse(actor.UserId, actor.UniversityId, actor.DisplayName, actor.Roles, actor.StudentId,
                 actor.Grants.Select(g => new PermissionGrantResponse(PermissionCodes.FromString(g.Permission), g.GroupId)).ToArray(), areas.ToArray()));
         }).Produces<SessionResponse>().Produces(401);
+        group.MapGet("/staff-context", async (ICurrentActor current, AppDbContext db, IStaffTeachingProvisioner teaching, HttpContext ctx) =>
+        {
+            var actor = await current.Get(ctx.RequestAborted);
+            if (actor is null) return Results.Unauthorized();
+            if (!actor.Roles.Contains("Staff")) return Results.Forbid();
+            var ids = actor.Grants.Where(x => x.GroupId != null).Select(x => x.GroupId!.Value).Distinct().ToArray();
+            var groups = await db.StudyGroups.AsNoTracking().Where(x => x.UniversityId == actor.UniversityId && ids.Contains(x.Id)).OrderBy(x => x.Name).ToArrayAsync(ctx.RequestAborted);
+            return Results.Ok(new StaffContextResponse(actor.Roles,
+                groups.Select(g => new StaffGroupResponse(g.Id, g.Name, actor.Grants.Where(p => actor.Can(p.Permission, actor.UniversityId, g.Id)).Select(p => PermissionCodes.FromString(p.Permission)).Distinct().ToArray())).ToArray(),
+                await teaching.List(actor.UniversityId, actor.UserId, ctx.RequestAborted)));
+        }).Produces<StaffContextResponse>().Produces(401).Produces(403);
         group.MapGet("/me", async (ICurrentActor current, AppDbContext db, HttpContext ctx) =>
         {
             var actor = await current.Get(ctx.RequestAborted);

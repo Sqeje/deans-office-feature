@@ -22,6 +22,21 @@ public sealed class AcademicPerformanceTests
     private static readonly Guid CourseId = Guid.Parse("60000000-0000-0000-0000-000000000003");
 
     [Fact]
+    public async Task CorrectionRequiresReasonAndLeavesHistoryUnchanged()
+    {
+        await using var env = await TestApp.Create();
+        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var student = await env.Login("student1@demo.invalid", env.Password1);
+        var profile = (await student.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
+        await Csrf(staff);
+        var response = await staff.PutAsJsonAsync(StaffUrl + $"/students/{profile.Id}/courses/{CourseId}/result", new SaveResultRequest(FinalKind.Grade, 4));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var scope = env.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.Set<FinalResultHistory>().AnyAsync());
+        Assert.Equal(2, (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
+    }
+    [Fact]
     public async Task StudentsReadTheirOwnResultsAndStaffChangePersistsWithOneAudit()
     {
         await using var env = await TestApp.Create();
@@ -58,14 +73,14 @@ public sealed class AcademicPerformanceTests
         Assert.Equal(HttpStatusCode.NotFound, (await first.GetAsync("/api/academic-performance/student?semesterId=missing")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await staff.GetAsync(StaffUrl + "/students/missing?semesterId=2026-autumn")).StatusCode);
         var groups = (await staff.GetFromJsonAsync<DirectoryGroup[]>(StaffUrl + "/groups"))!;
-        Assert.Equal(GroupId, Assert.Single(groups).Id);
-        Assert.Equal(2, (await staff.GetFromJsonAsync<DirectoryStudent[]>(StaffUrl + $"/groups/{GroupId}/students"))!.Length);
+        Assert.Contains(groups, g => g.Id == GroupId);
+        Assert.Equal(10, (await staff.GetFromJsonAsync<DirectoryStudent[]>(StaffUrl + $"/groups/{GroupId}/students"))!.Length);
         var url = StaffUrl + $"/students/{firstProfile.Id}/courses/{CourseId}/result";
         // Login's pre-authentication CSRF token cannot authorize a post-login mutation.
-        Assert.Equal(HttpStatusCode.BadRequest, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4, 0, "Исправлена ошибка ввода"))).StatusCode);
         await Csrf(staff);
-        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4))).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4, 0, "Исправлена ошибка ввода"))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4, 0, "Исправлена ошибка ввода"))).StatusCode);
         var after = (await first.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         Assert.Equal(4, after.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
         Assert.Equal(4m, after.Summary.Average);
@@ -129,7 +144,7 @@ public sealed class AcademicPerformanceTests
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             Assert.Empty(await db.AuditEntries.ToArrayAsync());
-            db.StaffGrants.RemoveRange(db.StaffGrants.Where(x => x.UserId == session.UserId && x.Permission == Permissions.GradesWrite));
+            db.StaffGrants.RemoveRange(db.StaffGrants.Where(x => x.UserId == session.UserId && (x.Permission == Permissions.GradesWrite || x.Permission == Permissions.GradesRead)));
             await db.SaveChangesAsync();
         }
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync(StaffUrl + "/groups")).StatusCode);
@@ -156,7 +171,7 @@ public sealed class AcademicPerformanceTests
         var creditId = Guid.Parse("60000000-0000-0000-0000-000000000001");
         var creditUrl = StaffUrl + $"/students/{profile.Id}/courses/{creditId}/result";
         Assert.Equal(HttpStatusCode.BadRequest, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.Grade, 5))).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.FailedCredit, null))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.FailedCredit, null, 0, "Исправлена ошибка ввода"))).StatusCode);
         var responseData = (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         Assert.Equal(2, responseData.Summary.Debts);
         Assert.Equal(0, responseData.Summary.Credits);
@@ -198,6 +213,9 @@ public sealed class AcademicPerformanceTests
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Add(new AcademicCourse { Id = local, UniversityId = profile.UniversityId, GroupId = GroupId, SemesterId = "2026-autumn", Name = "New local exam", Assessment = AssessmentKind.Exam });
+            var teacherId = await db.Users.Where(u => u.Email == "staff@demo.invalid").Select(u => u.Id).SingleAsync();
+            db.Add(new TeachingAssignment { Id = Guid.NewGuid(), UniversityId = profile.UniversityId,
+                GroupId = GroupId, CourseId = local, TeacherUserId = teacherId });
             db.Universities.Add(new() { Id = foreignUniversity, Name = "Fictitious foreign" });
             db.StudyGroups.Add(new() { Id = foreignGroup, UniversityId = foreignUniversity, Name = "Foreign" });
             db.Add(new AcademicSemester { Id = "foreign-term", UniversityId = foreignUniversity, Label = "Foreign term", StartsOn = new(2026, 9, 1), IsDefault = true });
@@ -207,7 +225,7 @@ public sealed class AcademicPerformanceTests
         await Csrf(staff);
         var url = StaffUrl + $"/students/{profile.Id}/courses/{local}/result";
         for (var i = 0; i < 2; i++) Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 5))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await staff.PutAsJsonAsync(StaffUrl + $"/students/{profile.Id}/courses/{foreign}/result", new SaveResultRequest(FinalKind.Grade, 4))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await staff.PutAsJsonAsync(StaffUrl + $"/students/{profile.Id}/courses/{foreign}/result", new SaveResultRequest(FinalKind.Grade, 4, 0, "Исправлена ошибка ввода"))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await student.GetAsync("/api/academic-performance/student?semesterId=foreign-term")).StatusCode);
         using (var scope = env.Factory.Services.CreateScope())
         {
@@ -276,6 +294,21 @@ public sealed class AcademicPerformanceTests
                     .ConfigureAppConfiguration((_, c) => c.AddConfiguration(result.Config))
                     .ConfigureServices(s => s.AddSingleton<TimeProvider>(new TestClock())));
                 await DemoSeed.Run(result.Factory.Services, result.Config);
+                // Isolate the original summary examples from the enriched demo outcomes.
+                // The full set is exercised independently by WorkplaceSeedIntegrationTests.
+                using (var scope = result.Factory.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var teacher = await db.Users.SingleAsync(u => u.Email == "staff@demo.invalid");
+                    var originalIds = new[] { CourseId, Guid.Parse("60000000-0000-0000-0000-000000000001") };
+                    var originalCourses = await db.Set<AcademicCourse>().Where(c => originalIds.Contains(c.Id)).ToArrayAsync();
+                    var linkedCourses = await db.Set<TeachingAssignment>().Select(a => a.CourseId).Distinct().ToArrayAsync();
+                    await db.Set<AcademicResult>().Where(r => linkedCourses.Contains(r.CourseId)).ExecuteDeleteAsync();
+                    foreach (var course in originalCourses)
+                        db.Add(new TeachingAssignment { Id = Guid.NewGuid(), UniversityId = teacher.UniversityId,
+                            TeacherUserId = teacher.Id, GroupId = course.GroupId, CourseId = course.Id });
+                    await db.SaveChangesAsync();
+                }
                 return result;
             }
             catch { await result.DisposeAsync(); throw; }

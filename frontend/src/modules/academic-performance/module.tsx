@@ -15,7 +15,7 @@ export const academicPerformanceModule: FrontendModule = {
       path: "academic-performance",
       title: "Успеваемость",
       Page: StaffPage,
-      permission: "grades.write",
+      permission: "grades.read",
     },
   ],
 };

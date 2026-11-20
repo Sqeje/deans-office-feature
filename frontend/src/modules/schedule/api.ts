@@ -41,7 +41,7 @@ export function toEvent(event: ServerEvent): ScheduleEvent {
     ? { status: "rescheduled", ...event.previous, location: { ...event.previous.location, floor: Number(event.previous.location.floor) } }
     : { status: event.status === "cancelled" ? "cancelled" : "scheduled" };
   return { id: event.id, groupId: event.groupId, groupName: event.groupName, teacherId: "", teacher: event.teacher,
-    title: event.title, kind: event.kind, category: event.category, room: event.room,
+    title: event.title, courseId: event.courseId, kind: event.kind, category: event.category, room: event.room,
     startsAt: event.startsAt, endsAt: event.endsAt, location: { ...event.location, floor: Number(event.location.floor) }, change, serverBacked: true };
 }
 export const personalSource: EventSource = async (query, signal) =>

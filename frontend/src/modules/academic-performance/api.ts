@@ -50,9 +50,22 @@ function adapt(data: Performance): SemesterPerformance {
         examDate: d.assessment === "exam" ? d.assessmentDate : null,
         assessmentDate: d.assessmentDate ?? undefined,
         isLocal: d.isLocal,
+        version: Number(d.version),
       };
     }),
   };
+}
+export async function loadJournal(courseId: string, signal: AbortSignal) {
+  const { data, error, response } = await client.GET("/api/academic-performance/staff/courses/{courseId}/journal", { params: { path: { courseId } }, signal });
+  await check(response, error); return data!;
+}
+export async function saveJournal(lessonId: string, body: components["schemas"]["SaveJournalRequest"]) {
+  const { error, response } = await client.PUT("/api/academic-performance/staff/lessons/{lessonId}/journal", { params: { path: { lessonId } }, body, headers: await csrf() });
+  await check(response, error);
+}
+export async function loadHistory(studentId: string, courseId: string, signal: AbortSignal) {
+  const { data, error, response } = await client.GET("/api/academic-performance/staff/students/{studentId}/courses/{courseId}/history", { params: { path: { studentId, courseId } }, signal });
+  await check(response, error); return data!;
 }
 export async function loadSemesters(
   signal: AbortSignal,

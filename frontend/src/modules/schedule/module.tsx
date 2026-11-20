@@ -12,7 +12,7 @@ export const scheduleModule: FrontendModule = {
       Navigation: ScheduleNavigation,
       title: "Расписание",
       Page,
-      permission: "schedule.write",
+      permission: "grades.read",
     },
   ],
 };

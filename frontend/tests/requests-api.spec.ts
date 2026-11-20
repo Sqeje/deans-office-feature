@@ -1,12 +1,12 @@
 import { test, expect, type Page } from './test';
-async function login(page:Page, account:'student1'|'staff') {
- const password=process.env[account==='staff'?'DEMO_STAFF_PASSWORD':'DEMO_PASSWORD1']; if(!password)throw new Error('Demo password required');
+async function login(page:Page, account:'student1'|'dean1') {
+ const password=process.env[account==='dean1'?'DEMO_STAFF_PASSWORD':'DEMO_PASSWORD1']; if(!password)throw new Error('Demo password required');
  await page.goto('/login');await page.getByLabel('Электронная почта').fill(account+'@demo.invalid');await page.getByLabel('Пароль',{exact:true}).fill(password);await page.getByRole('button',{name:'Войти',exact:true}).click();await expect(page.getByRole('heading',{level:1})).toContainText('Здравствуйте');
 }
 test('live requests: persistence, employee workflow, rejection and ready history',async({browser})=>{
  test.setTimeout(60_000);
  const studentContext=await browser.newContext({viewport:{width:360,height:900}});const staffContext=await browser.newContext({viewport:{width:1280,height:1000}});
- try {const student=await studentContext.newPage(),staff=await staffContext.newPage();await login(student,'student1');await login(staff,'staff');
+ try {const student=await studentContext.newPage(),staff=await staffContext.newPage();await login(student,'student1');await login(staff,'dean1');
  for(const kind of ['certificate','statement']) {
  await student.goto('/student/requests?view=create');
  if(kind==='certificate')await student.getByLabel('Место предъявления').fill('Приёмочная проверка');else {await student.getByLabel('Вид заявки').selectOption('statement');await student.getByLabel('Причина',{exact:true}).fill('Учебный проект');await student.getByLabel('Начало периода').fill('2026-11-13');await student.getByLabel('Окончание периода').fill('2026-11-20');}

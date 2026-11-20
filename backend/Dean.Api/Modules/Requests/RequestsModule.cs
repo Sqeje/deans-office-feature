@@ -13,7 +13,7 @@ namespace Dean.Api.Modules.Requests;
 public sealed class RequestsModule : IAppModule
 {
     public string Id => "requests";
-    public void AddServices(IServiceCollection services, IConfiguration config) { }
+    public void AddServices(IServiceCollection services, IConfiguration config) { services.AddScoped<WorkplaceRequestsDemoSeed>(); }
     private static IQueryable<StudentRequest> Query(AppDbContext db, Actor actor) =>
         db.Set<StudentRequest>().Include(x => x.History).Where(x => x.UniversityId == actor.UniversityId);
     private static bool Student(Actor actor) => actor.StudentId is not null && actor.Roles.Contains("Student");

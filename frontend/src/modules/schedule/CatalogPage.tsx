@@ -1,73 +1,17 @@
-import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, Search } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { catalogPath, directions, programs, groups, groupPath, searchTeachers } from "./catalog";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
+import { catalogPath } from "./catalog";
 import { useSchedulePaths } from "./paths";
-
+import { useServerCatalog } from "./serverCatalog";
 export interface Crumb { title: string; to?: string }
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
-  return <nav className="schedule-breadcrumbs" aria-label="Путь расписания"><ol>
-    {items.map((item, i) => <li key={i}>{i > 0 && <ChevronRight aria-hidden="true" />}
-      {item.to ? <Link to={item.to}>{item.title}</Link> : <span aria-current="page">{item.title}</span>}
-    </li>)}
-  </ol></nav>;
-}
-export function groupCrumbs(groupId: string, catalog = catalogPath): Crumb[] {
-  const group = groups.find(g => g.id === groupId)!;
-  const program = programs.find(p => p.id === group.programId)!;
-  const direction = directions.find(d => d.id === program.directionId)!;
-  const base = `${catalog}/${direction.id}`;
-  return [{ title: "Все расписания", to: catalog }, { title: direction.name, to: base },
-    { title: program.name, to: `${base}/${program.id}` }, { title: String(group.year), to: `${base}/${program.id}/${group.year}` }, { title: group.name }];
-}
-export function NotFound() {
-  const { catalog } = useSchedulePaths();
-  return <section><h1>Расписание не найдено</h1><p>Проверьте адрес или выберите группу и преподавателя в каталоге.</p><Link to={catalog}>Открыть каталог</Link></section>;
-}
-function TeacherSearch() {
-  const { base } = useSchedulePaths();
-  const [search, setSearch] = useSearchParams();
-  const query = search.get("q") ?? "";
-  const [input, setInput] = useState(query);
-  useEffect(() => setInput(query), [query]);
-  const results = searchTeachers(query);
-  return <section className="card schedule-search"><h2>Расписания преподавателей</h2>
-    <form onSubmit={event => { event.preventDefault(); setSearch(input.trim() ? { q: input.trim() } : {}); }}>
-      <label className="sr-only" htmlFor="teacher-search">Поиск преподавателя</label>
-      <div className="schedule-search-input"><Search aria-hidden="true" /><input id="teacher-search" value={input} onChange={event => setInput(event.target.value)} placeholder="Фамилия или имя преподавателя" /></div>
-      <Button type="submit">Найти</Button>
-    </form>
-    <p className="sr-only" role="status">Найдено преподавателей: {results.length}</p>
-    {results.length ? <ul>{results.map(t => <li key={t.id}><Link to={`${base}/teachers/${t.id}?${new URLSearchParams({ q: query }).toString()}`}>{t.shortName}</Link></li>)}</ul> : <p>Преподаватели не найдены. Измените запрос.</p>}
-  </section>;
-}
-export function CatalogPage() {
-  const { base: scheduleBase, catalog: catalogPath } = useSchedulePaths();
-  const { directionId, programId, year } = useParams();
-  const direction = directions.find(d => d.id === directionId);
-  const program = programs.find(p => p.id === programId && p.directionId === directionId);
-  const matchingGroups = groups.filter(g => g.programId === programId);
-  const years = [...new Set(matchingGroups.map(g => g.year))].sort((a, b) => b - a);
-  if ((directionId && !direction) || (programId && !program) || (year && !years.some(y => String(y) === year))) return <NotFound />;
-  const base = `${catalogPath}/${directionId}`;
-  const crumbs: Crumb[] = [{ title: "Все расписания", ...(direction ? { to: catalogPath } : {}) }];
-  if (direction) crumbs.push({ title: direction.name, ...(program ? { to: base } : {}) });
-  if (program) crumbs.push({ title: program.name, ...(year ? { to: `${base}/${program.id}` } : {}) });
-  if (year) crumbs.push({ title: year });
-  const entries = !direction ? directions.map(d => ({ title: d.name, to: `${catalogPath}/${d.id}` }))
-    : !program ? programs.filter(p => p.directionId === direction.id).map(p => ({ title: p.name, to: `${base}/${p.id}` }))
-    : !year ? years.map(y => ({ title: String(y), to: `${base}/${program.id}/${y}` }))
-    : matchingGroups.filter(g => g.year === Number(year)).map(g => ({ title: g.name, to: groupPath(g.id, scheduleBase) }));
-  return <>
-    <Breadcrumbs items={crumbs} />
-    <h1>{direction?.name ?? "Все расписания"}</h1>
-    <p className="muted">{program ? `${program.name}${year ? ` · ${year} год поступления` : ""}` : "Выберите направление или найдите преподавателя"}</p>
-    <div className="schedule-catalog-grid">
-      <section className="card"><h2>{!direction ? "Направления" : !program ? "Образовательные программы" : !year ? "Годы поступления" : "Группы"}</h2>
-        <ul className="schedule-catalog-list">{entries.map(entry => <li key={entry.to}><Link to={entry.to}>{entry.title}<ChevronRight aria-hidden="true" /></Link></li>)}</ul>
-      </section>
-      {!direction && <TeacherSearch />}
-    </div>
-  </>;
+export function Breadcrumbs({items}:{items:Crumb[]}) {return <nav className="schedule-breadcrumbs" aria-label="Путь расписания"><ol>{items.map((item,i)=><li key={i}>{i>0&&<ChevronRight aria-hidden="true"/>}{item.to?<Link to={item.to}>{item.title}</Link>:<span aria-current="page">{item.title}</span>}</li>)}</ol></nav>;}
+export function groupCrumbs(groupId:string,catalog=catalogPath):Crumb[]{return [{title:"Все расписания",to:catalog},{title:groupId}];}
+export function NotFound(){const {catalog}=useSchedulePaths();return <section><h1>Расписание не найдено</h1><p>Проверьте адрес или выберите доступную группу и преподавателя в каталоге.</p><Link to={catalog}>Открыть каталог</Link></section>;}
+export function CatalogPage(){
+ const {base}=useSchedulePaths();const {data,error}=useServerCatalog();const [query,setQuery]=useState("");
+ if(error)return <p role="alert">Не удалось загрузить каталог. Обновите страницу.</p>;
+ if(!data)return <p role="status">Загрузка каталога…</p>;
+ const teachers=data.teachers.filter(t=>t.name.toLocaleLowerCase("ru-RU").replaceAll("ё","е").includes(query.toLocaleLowerCase("ru-RU").replaceAll("ё","е")));
+ return <><Breadcrumbs items={[{title:"Все расписания"}]}/><h1>Все расписания</h1><p className="muted">Группы и преподаватели, доступные вашему аккаунту</p><div className="schedule-catalog-grid"><section className="card"><h2>Группы</h2>{data.groups.length?<ul className="schedule-catalog-list">{data.groups.map(g=><li key={g.id}><Link to={`${base}/groups/${g.id}`}>{g.name}<ChevronRight aria-hidden="true"/></Link></li>)}</ul>:<p>Доступных групп нет.</p>}</section><section className="card schedule-search"><h2>Расписания преподавателей</h2><label htmlFor="teacher-search">Поиск преподавателя</label><input id="teacher-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Фамилия или имя преподавателя"/>{teachers.length?<ul>{teachers.map(t=><li key={t.id}><Link to={`${base}/teachers/${t.id}`}>{t.name}</Link></li>)}</ul>:<p>Преподаватели не найдены.</p>}</section></div></>;
 }

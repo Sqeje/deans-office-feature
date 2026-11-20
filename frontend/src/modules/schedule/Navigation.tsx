@@ -1,15 +1,18 @@
+import { useSession } from "../../shared/session";
 import { useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import { useSchedulePaths } from "./paths";
 function useItems() {
   const paths = useSchedulePaths();
+  const { session } = useSession();
+  const teacher = !!session?.roles.includes("Teacher") && !!session.permissions.some(p => p.permission === "schedule.write");
   const inSchedule = paths.pathname === paths.base || paths.pathname.startsWith(`${paths.base}/`);
   const editing = paths.staff && paths.pathname === `${paths.base}/edit`;
   return { ...paths, items: [
     { to: paths.base, label: "Моё расписание", active: paths.pathname === paths.base },
     { to: paths.catalog, label: "Все расписания", active: inSchedule && paths.pathname !== paths.base && !editing },
-    ...(paths.staff ? [{ to: `${paths.base}/edit`, label: "Редактировать расписание", active: editing }] : []),
+    ...(paths.staff && teacher ? [{ to: `${paths.base}/edit`, label: "Редактировать расписание", active: editing }] : []),
   ] };
 }
 export function ScheduleNavigation() {

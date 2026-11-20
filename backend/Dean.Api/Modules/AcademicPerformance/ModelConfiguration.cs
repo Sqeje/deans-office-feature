@@ -37,6 +37,7 @@ public sealed class ResultConfiguration : IEntityTypeConfiguration<AcademicResul
         b.HasAlternateKey(x => new { x.Id, x.UniversityId });
         b.HasIndex(x => new { x.CourseId, x.StudentId, x.UniversityId }).IsUnique();
         b.Property(x => x.SourceId).HasMaxLength(100);
+        b.Property(x => x.Version).IsConcurrencyToken();
         b.HasOne<AcademicCourse>().WithMany().HasForeignKey(x => new { x.CourseId, x.GroupId, x.UniversityId })
             .HasPrincipalKey(x => new { x.Id, x.GroupId, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<StudentProfile>().WithMany().HasForeignKey(x => new { x.StudentId, x.GroupId, x.UniversityId })

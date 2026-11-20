@@ -35,6 +35,6 @@ public sealed class StaffGrantConfiguration : IEntityTypeConfiguration<StaffGran
         b.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => new { x.UserId, x.UniversityId }).HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<StudyGroup>().WithMany().HasForeignKey(x => new { x.GroupId, x.UniversityId }).HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
         b.Property(x => x.Permission).HasMaxLength(100);
-        b.ToTable(t => t.HasCheckConstraint("CK_StaffGrant_Scope", "(\"Permission\" IN ('announcements.publish','sources.manage') AND \"GroupId\" IS NULL) OR (\"Permission\" IN ('requests.manage','schedule.write','grades.write') AND \"GroupId\" IS NOT NULL)"));
+        b.ToTable(t => t.HasCheckConstraint("CK_StaffGrant_Scope", "(\"Permission\" IN ('announcements.publish','sources.manage') AND \"GroupId\" IS NULL) OR (\"Permission\" IN ('requests.manage','schedule.write','grades.write','grades.read','journal.write','grades.correct') AND \"GroupId\" IS NOT NULL)"));
     }
 }

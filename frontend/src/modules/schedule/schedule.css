@@ -485,3 +485,4 @@
 .schedule-teacher-tabs > a { flex: 1 1 150px; display: flex; align-items: center; justify-content: center; text-align: center; border: 1px solid var(--color-control-border); }
 .schedule-staff input[readonly] { color: var(--color-text-muted); background: var(--color-canvas); }
 .schedule-staff input:disabled { color: var(--color-disabled-text); background: var(--color-disabled-bg); }
+.schedule-search input { display:block; width:100%; min-width:0; min-height:44px; margin:8px 0 16px; padding:10px 12px; border:1px solid var(--color-control-border); border-radius:10px; background:var(--color-surface); font:inherit; }

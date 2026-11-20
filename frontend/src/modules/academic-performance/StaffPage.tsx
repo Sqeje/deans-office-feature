@@ -1,4 +1,8 @@
 import { useCallback, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useSession } from "../../shared/session";
+import { Journal } from "./Journal";
+import { loadStaffContext } from "../identity/staffContext";
 import { Button } from "../../components/ui/button";
 import { SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
@@ -9,6 +13,7 @@ import {
   loadStudents,
   loadStudentPerformance,
   saveResult,
+  loadHistory,
   type ResultInput,
 } from "./api";
 import { RequestFailure, useRemote } from "./remote";
@@ -16,6 +21,16 @@ import { finalLabel, type Discipline } from "./model";
 import "./performance.css";
 
 export function StaffPage() {
+  const [query] = useSearchParams();
+  const { session } = useSession();
+  const context = useRemote("staff-context", loadStaffContext);
+  const canJournal = !!context.data?.roles.includes("Teacher") && !!context.data.assignments.length && !!session?.permissions.some(p => p.permission === "journal.write");
+  const journal = canJournal && query.get("view") !== "finals";
+  return <div className="performance-staff"><h1>Успеваемость</h1><nav className="staff-links" aria-label="Разделы успеваемости">{canJournal && <Link to="?view=journal" aria-current={journal ? "page" : undefined}>Журнал занятий</Link>}<Link to="?view=finals" aria-current={!journal ? "page" : undefined}>Итоговые результаты</Link></nav>{context.error ? <RequestFailure error={context.error} retry={context.retry} /> : !context.data ? <Skeleton /> : journal ? <Journal /> : <FinalsPage />}</div>;
+}
+function FinalsPage() {
+  const { session } = useSession();
+  const context = useRemote("finals-staff-context", loadStaffContext);
   const groups = useRemote("groups", loadGroups);
   const catalog = useRemote("semesters", loadSemesters);
   const [groupId, setGroup] = useState("");
@@ -64,10 +79,9 @@ export function StaffPage() {
   }
   return (
     <div className="performance-staff">
-      <h1>Успеваемость</h1>
+      <h2>Итоговые результаты</h2>
       <p className="muted">
-        Внесите локальный итог студента назначенной группы. Текущие работы
-        доступны для просмотра.
+        Итоговая аттестация. Просмотрите результаты или включите разрешённый режим изменения.
       </p>
       {groups.error ? (
         <RequestFailure
@@ -215,8 +229,11 @@ export function StaffPage() {
               busy={busy}
               onSave={save}
               error={saveError}
+              canWrite={!!session?.permissions.some(p => p.permission === "grades.write" && (!p.groupId || p.groupId === groupId)) && (!context.data?.roles.includes("Teacher") || !!context.data.assignments.some(a => a.courseId === discipline.id && a.groupId === groupId))}
+              canCorrect={!!session?.permissions.some(p => (p.permission === "grades.correct" || (p.permission === "grades.write" && context.data?.assignments.some(a => a.courseId === discipline.id))) && (!p.groupId || p.groupId === groupId))}
             />
           )}
+          {discipline && <History key={discipline.version} studentId={studentId} courseId={discipline.id} />}
         </>
       )}
     </div>
@@ -228,17 +245,25 @@ function ResultEditor({
   busy,
   onSave,
   error,
+  canWrite,
+  canCorrect,
 }: {
   discipline: Discipline;
   busy: boolean;
   onSave: (body: ResultInput) => Promise<void>;
   error: unknown;
+  canWrite: boolean;
+  canCorrect: boolean;
 }) {
   const initial =
     discipline.final?.kind === "grade"
       ? String(discipline.final.value)
       : (discipline.final?.kind ?? "pending");
   const [value, setValue] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  const [reason, setReason] = useState("");
+  const correcting = discipline.final !== null;
+  const allowed = correcting ? canCorrect : canWrite;
   const isLocal = discipline.isLocal !== false;
   const message = error
     ? error instanceof ApiError && error.status === 400
@@ -256,7 +281,7 @@ function ResultEditor({
           value === "pending" || value === "credit" || value === "failed-credit"
             ? value
             : "grade";
-        void onSave({ kind, value: kind === "grade" ? Number(value) : null });
+        void onSave({ kind, value: kind === "grade" ? Number(value) : null, version: discipline.version ?? 0, reason: reason.trim() || null });
       }}
     >
       <h2>{discipline.name}</h2>
@@ -273,7 +298,7 @@ function ResultEditor({
         label="Итоговый результат"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        disabled={busy || !isLocal}
+        disabled={busy || !isLocal || !editing || !allowed}
         aria-invalid={!!message}
         aria-describedby={message ? "result-error" : undefined}
       >
@@ -302,9 +327,16 @@ function ResultEditor({
           {message}
         </p>
       )}
-      <Button variant="primary" disabled={busy || !isLocal} type="submit">
+      {!editing && isLocal && allowed && <Button type="button" variant="outline" onClick={() => setEditing(true)}>{correcting ? "Исправить результат" : "Внести результат"}</Button>}
+      {editing && <label>Причина изменения{correcting ? " (обязательно)" : ""}<textarea className="staff-reason" value={reason} onChange={e => setReason(e.target.value)} required={correcting} maxLength={1000} disabled={busy} /></label>}
+      {editing && allowed && <Button variant="primary" disabled={busy || !isLocal || (correcting && !reason.trim()) || (error instanceof ApiError && error.status === 409)} type="submit">
         {busy ? "Сохраняем…" : "Сохранить результат"}
-      </Button>
+      </Button>}
     </form>
   );
+}
+function History({ studentId, courseId }: { studentId: string; courseId: string }) {
+  const load = useCallback((signal: AbortSignal) => loadHistory(studentId, courseId, signal), [studentId, courseId]);
+  const history = useRemote(studentId + courseId, load);
+  return <section className="academic-panel"><h2>История итогового результата</h2>{history.error ? <RequestFailure error={history.error} retry={history.retry} /> : !history.data ? <p role="status">Загружаем историю…</p> : !history.data.length ? <p>Изменений пока нет.</p> : history.data.map(item => <div className="staff-assignment" key={item.id}><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("ru-RU") : "Дата не указана"} · Версия {item.version}</p><p>{item.previousValue ?? item.previousKind ?? "Не выставлен"} → {item.value ?? item.kind}</p><p>Сотрудник: {item.actorId}</p>{item.reason && <p>Причина: {item.reason}</p>}</div>)}</section>;
 }
