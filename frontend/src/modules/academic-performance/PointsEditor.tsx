@@ -23,6 +23,7 @@ export function PointsEditor({ studentId, courseId }: { studentId: string; cours
     { id: "", name: "Итоговая аттестация", kind: "final", maximum: 50, isAttendance: false },
   ];
   const scored = scores.data.length > 0;
+  const validPlan = components.every(x => x.name.trim() && Number(x.maximum) > 0) && components.filter(x => x.isAttendance).length <= 1 && components.reduce((sum,x) => sum + Number(x.maximum), 0) === 100;
   async function submitPlan() {
     setBusy(true); setMessage("");
     try {
@@ -32,19 +33,24 @@ export function PointsEditor({ studentId, courseId }: { studentId: string; cours
     finally { setBusy(false); }
   }
   return <section className="academic-panel points-editor" aria-label="Балльный план и баллы студента">
-    <h3>Баллы по дисциплине · 100 баллов</h3>
+    <h3>Правила оценивания · 100 баллов</h3>
+    <p className="muted">Настройте работы и их вес для всей дисциплины. Схема 20 + 20 + 10 + 50 — начальный шаблон: её можно изменить до выставления баллов.</p>
+    {scored && <p role="note">По дисциплине уже выставлены баллы. Изменение состава и весов работ ограничено, чтобы сохранить результаты студентов.</p>}
+    <p className="muted">Итог экзамена или зачёта выставляется отдельно. Шкала автоматического перевода баллов пока не опубликована.</p>
     {components.map((component, i) => {
       const score = scores.data?.find(x => x.componentId === component.id);
       return <div className="points-editor-row" key={component.id || i}>
         <label>Название компонента<input aria-label={`Название компонента ${i + 1}`} value={component.name} disabled={busy || scored} onChange={e => setDraft({ ...value, components: components.map((x,n) => n === i ? { ...x, name: e.target.value } : x) })} /></label>
+        <label>Вид компонента<select aria-label={`Вид компонента ${i + 1}`} value={component.kind} disabled={busy || scored} onChange={e => setDraft({ ...value, components: components.map((x,n) => n === i ? { ...x, kind: e.target.value, isAttendance: e.target.value === "attendance" } : x) })}><option value="assessment">Работа в семестре</option><option value="attendance">Посещение занятий</option><option value="final">Итоговая аттестация</option></select></label>
         <label>Максимум баллов<input aria-label={`Максимум: ${component.name}`} type="number" min="1" max="100" step="0.5" value={component.maximum} disabled={busy || scored} onChange={e => setDraft({ ...value, components: components.map((x,n) => n === i ? { ...x, maximum: Number(e.target.value) } : x) })} /></label>
         {!scored && <button type="button" className="text-button" aria-label={`Удалить компонент ${component.name}`} disabled={busy} onClick={() => setDraft({ ...value, components: components.filter((_,n) => n !== i) })}>Удалить</button>}
         {component.isAttendance ? <span>Из журнала посещаемости</span> : <label>Баллы студента<input aria-label={`Баллы: ${component.name}`} type="number" min="0" max={component.maximum} step="0.5" placeholder="Не выставлено" defaultValue={score?.points ?? ""} disabled={!component.id || busy} onBlur={async e => { if (!component.id) return; try { await savePointScore(studentId, courseId, component.id, { points: e.target.value === "" ? null : Number(e.target.value), version: Number(score?.version ?? 0) }); scores.retry(); setMessage("Баллы сохранены."); } catch (error) { setMessage(error instanceof ApiError && error.status === 409 ? "Баллы уже изменились. Обновите страницу." : "Не удалось сохранить баллы."); } }} /> </label>}
       </div>;
     })}
     {!scored && <Button type="button" variant="outline" disabled={busy} onClick={() => setDraft({ ...value, components: [...components, { id: "", name: "Новая работа", kind: "assessment", maximum: 0, isAttendance: false }] })}>Добавить компонент</Button>}
+    <p className="muted">Посещение можно добавить один раз. Баллы за него рассчитываются из журнала.</p>
     <p>Всего: {components.reduce((sum,x) => sum + Number(x.maximum), 0)} из 100</p>
-    <Button type="button" disabled={busy || components.reduce((sum,x) => sum + Number(x.maximum), 0) !== 100} onClick={() => void submitPlan()}>{busy ? "Сохраняем…" : "Сохранить план баллов"}</Button>
+    <Button type="button" disabled={busy || !validPlan} onClick={() => void submitPlan()}>{busy ? "Сохраняем…" : "Сохранить план баллов"}</Button>
     {message && <p role="status">{message}</p>}
   </section>;
 }

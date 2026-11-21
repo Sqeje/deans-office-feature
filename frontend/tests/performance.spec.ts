@@ -122,7 +122,7 @@ test("session items open discipline, empty grades and unknown records", async ({
     .locator(".academic-session")
     .getByRole("link", { name: /Программирование/ })
     .click();
-  await expect(page.getByText("Текущих оценок пока нет.")).toBeVisible();
+  await expect(page.getByText("Оценок за отдельные работы пока нет.")).toBeVisible();
   await expect(
     page.getByText("20 января 2027 г.", { exact: true }),
   ).toBeVisible();

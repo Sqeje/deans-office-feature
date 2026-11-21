@@ -133,7 +133,7 @@ test("live PostgreSQL: employee saves, two students stay separate, home and sect
       .getByRole("link", { name: "Открыть успеваемость", exact: true })
       .click();
     await expect(first.locator(".academic-results-summary")).toHaveText(
-      `Сдано дисциплин: ${after.summary.passed} · Средний балл: ${formatNumber(after.summary.average!)}`,
+      `Сдано дисциплин: ${after.summary.passed} · Средняя итоговая оценка (2–5): ${formatNumber(after.summary.average!)}`,
     );
     await first
       .getByRole("link", {

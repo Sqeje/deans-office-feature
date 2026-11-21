@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { loadStudentPoints, type StudentPoints } from "./api";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../../components/ui/primitives";
 import {
@@ -10,9 +12,19 @@ import { Icon } from "./Icon";
 export function Result({ discipline: d }: { discipline: Discipline }) {
   return (
     <StatusBadge tone={resultPresentation[d.status].tone}>
-      {d.status === "debt" ? "Задолженность" : finalLabel(d.final)}
+      {d.final === null ? "Итог ещё не выставлен" : `${d.assessment === "exam" ? "Экзамен" : "Зачёт"}: ${finalLabel(d.final)}`}{d.status === "debt" && " · Задолженность"}
     </StatusBadge>
   );
+}
+function AccumulatedPoints({ courseId }: { courseId: string }) {
+  const [points, setPoints] = useState<StudentPoints>();
+  useEffect(() => {
+    const controller = new AbortController();
+    setPoints(undefined);
+    loadStudentPoints(courseId, controller.signal).then(value => { if (!controller.signal.aborted) setPoints(value); }).catch(() => {});
+    return () => controller.abort();
+  }, [courseId]);
+  return points?.components.length ? <small className="academic-course-points">Набрано {points.earned} из {points.maximum} баллов</small> : null;
 }
 export function ResultsTable({
   disciplines,
@@ -40,7 +52,7 @@ export function ResultsTable({
             to={href(d.id)}
             aria-label={"Открыть дисциплину: " + d.name}
           >
-            <strong role="cell">{d.name}</strong>
+            <span role="cell"><strong>{d.name}</strong><AccumulatedPoints key={d.id} courseId={d.id} /></span>
             <span role="cell" className="academic-assessment">
               {d.assessment === "exam" ? "Экзамен" : "Зачёт"}
             </span>
@@ -94,7 +106,7 @@ export function Overview({
       </div>
       {summary && (
         <p className="academic-results-summary">
-          Сдано дисциплин: {summary.passed} · Средний балл:{" "}
+          Сдано дисциплин: {summary.passed} · Средняя итоговая оценка (2–5):{" "}
           {summary.average === null
             ? "Оценок пока нет"
             : new Intl.NumberFormat("ru-RU", {

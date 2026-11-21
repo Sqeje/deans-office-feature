@@ -7,19 +7,28 @@ import { loadStudentPoints, type StudentPoints } from "./api";
 export function DisciplinePage({ discipline: d }: { discipline: Discipline }) {
   const [points, setPoints] = useState<StudentPoints>();
   const [pointsError, setPointsError] = useState(false);
+  const [pointsMissing, setPointsMissing] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    setPoints(undefined); setPointsError(false);
-    loadStudentPoints(d.id, controller.signal).then(setPoints).catch(error => { if (!controller.signal.aborted && !(error instanceof ApiError && error.status === 404)) setPointsError(true); });
+    setPoints(undefined); setPointsError(false); setPointsMissing(false);
+    loadStudentPoints(d.id, controller.signal).then(setPoints).catch(error => { if (!controller.signal.aborted) { if (error instanceof ApiError && error.status === 404) setPointsMissing(true); else setPointsError(true); } });
     return () => controller.abort();
   }, [d.id]);
   return (
     <>
       <section className="academic-panel academic-points" aria-labelledby="points-title">
-        <div className="academic-points-heading"><h2 id="points-title">Баллы за дисциплину</h2>{points && <strong>{points.earned} из {points.maximum}</strong>}</div>
-        {pointsError ? <p role="alert">Не удалось загрузить балльный план.</p> : !points ? <p className="muted" role="status">Загружаем баллы…</p> : points.components.length === 0 ? <p className="muted">Балльный план ещё не опубликован.</p> : <>
-          <ul>{points.components.map(component => <li key={component.id}><span>{component.name}{component.incomplete && <small> · Есть неотмеченные занятия</small>}</span><strong>{component.points === null ? "Не выставлено" : `${component.points} из ${component.maximum}`}</strong></li>)}</ul>
+        <div className="academic-points-heading"><h2 id="points-title">Накопленные баллы</h2>{!!points?.components.length && <strong>Набрано {points.earned} из {points.maximum}</strong>}</div>
+        {pointsError ? <p role="alert">Не удалось загрузить балльный план.</p> : pointsMissing ? <p className="muted">Балльный план для этой дисциплины пока недоступен.</p> : !points ? <p className="muted" role="status">Загружаем баллы…</p> : points.components.length === 0 ? <p className="muted">Балльный план ещё не опубликован.</p> : <>
+          <progress className="academic-score-progress" aria-label="Накопленные баллы" value={points.earned} max={points.maximum} />
+          <p className="muted">Баллы за выполненные работы и посещение. Невыставленные результаты ещё не входят в сумму.</p>
+          <ul>{points.components.map(component => <li key={component.id}><span>{component.name}{component.incomplete && <small> · Есть неотмеченные занятия</small>}</span><strong>{component.points === null ? `Не выставлено · из ${component.maximum}` : `${component.points} из ${component.maximum}`}</strong></li>)}</ul>
           {points.attendanceIncomplete && <p className="muted">Баллы за посещение предварительные: журнал заполнен не полностью.</p>}
+          <details className="academic-scoring-rules">
+            <summary>Правила оценивания дисциплины</summary>
+            <p>Преподаватель задаёт состав работ и максимум за каждую. Сумма максимумов — {points.maximum} баллов; разбивка указана выше.</p>
+            {points.components.some(x => x.kind === "attendance") && <p>Посещение рассчитывается по журналу: доля присутствий среди отмеченных прошедших занятий × максимум за посещение. Пока журнал заполнен не полностью, результат предварительный.</p>}
+            <p>Шкала перевода баллов в итоговую оценку пока не опубликована. Итог экзамена или зачёта преподаватель выставляет отдельно; автоматически из суммы баллов он не рассчитывается.</p>
+          </details>
         </>}
       </section>
       <section
@@ -37,8 +46,9 @@ export function DisciplinePage({ discipline: d }: { discipline: Discipline }) {
       </section>
       <div className="academic-discipline-grid">
         <section className="academic-panel">
-          <h2>Текущие оценки</h2>
-          {d.grades.length ? (
+          <h2>{points?.components.length ? "Как формируется итог" : "Оценки за отдельные работы"}</h2>
+          {points?.components.length ? <p>Накопленные баллы и результаты работ показаны выше. Итог экзамена или зачёта указан в блоке «Итоговая аттестация». Его выставляет преподаватель отдельно от накопленных баллов.</p> : d.grades.length ? (
+            <><p className="muted">Преподаватель выставил эти работы по пятибалльной шкале. Они не переводятся автоматически в накопленные баллы или итог аттестации.</p>
             <div
               className="academic-grades"
               role="table"
@@ -76,9 +86,9 @@ export function DisciplinePage({ discipline: d }: { discipline: Discipline }) {
                   </span>
                 </div>
               ))}
-            </div>
+            </div></>
           ) : (
-            <p className="muted">Текущих оценок пока нет.</p>
+            <p className="muted">Оценок за отдельные работы пока нет.</p>
           )}
         </section>
         <section className="academic-panel academic-about">
