@@ -5,6 +5,7 @@ using Dean.Api.Kernel.Auditing;
 using Dean.Api.Kernel.Security;
 using Dean.Api.Modules.AcademicPerformance;
 using Dean.Api.Modules.Identity;
+using Dean.Api.Modules.Schedule;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,7 +20,7 @@ public sealed class AcademicPerformanceTests
     private const string StudentUrl = "/api/academic-performance/student?semesterId=2026-autumn";
     private const string StaffUrl = "/api/academic-performance/staff";
     private static readonly Guid GroupId = Guid.Parse("20000000-0000-0000-0000-000000000001");
-    private static readonly Guid CourseId = Guid.Parse("60000000-0000-0000-0000-000000000003");
+    private static readonly Guid CourseId = WorkplaceDemo.FixtureId("course/0/0/2026-autumn");
 
     [Fact]
     public async Task CorrectionRequiresReasonAndLeavesHistoryUnchanged()
@@ -29,12 +30,15 @@ public sealed class AcademicPerformanceTests
         using var student = await env.Login("student1@demo.invalid", env.Password1);
         var profile = (await student.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
         await Csrf(staff);
-        var response = await staff.PutAsJsonAsync(StaffUrl + $"/students/{profile.Id}/courses/{CourseId}/result", new SaveResultRequest(FinalKind.Grade, 4));
+        await Csrf(staff);
+        var url = StaffUrl + $"/students/{profile.Id}/courses/{CourseId}/result";
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 4))).StatusCode);
+        var response = await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 5, 1));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using var scope = env.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.False(await db.Set<FinalResultHistory>().AnyAsync());
-        Assert.Equal(2, (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
+        Assert.Single(await db.Set<FinalResultHistory>().ToArrayAsync());
+        Assert.Equal(4, (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
     }
     [Fact]
     public async Task StudentsReadTheirOwnResultsAndStaffChangePersistsWithOneAudit()
@@ -48,18 +52,23 @@ public sealed class AcademicPerformanceTests
         using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
         var firstProfile = (await first.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
         var secondProfile = (await second.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
+        Assert.Equal("Факультет информационных технологий", firstProfile.Faculty);
+        Assert.Equal("Прикладная информатика", firstProfile.Program);
+        Assert.Equal(4, firstProfile.CourseNumber);
+        Assert.Equal(7, firstProfile.SemesterNumber);
+        Assert.Equal(4, firstProfile.StudyDurationYears);
         var before = (await first.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         var other = (await second.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
-        Assert.Equal(2, before.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
-        Assert.Equal(5, other.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
-        Assert.Equal(2m, before.Summary.Average);
-        Assert.Equal(1, before.Summary.Debts);
-        Assert.Equal(1, before.Summary.Credits);
-        Assert.Equal(Guid.Parse("60000000-0000-0000-0000-000000000002"), before.Summary.NextExam!.CourseId);
-        Assert.Equal(new DateOnly(2027, 1, 20), before.Summary.NextExam.Date);
-        Assert.Equal(5m, other.Summary.Average);
+        Assert.Null(before.Disciplines.Single(x => x.Id == CourseId).Final);
+        Assert.Null(before.Summary.Average);
+        Assert.Equal(0, before.Summary.Debts);
+        Assert.Equal(0, before.Summary.Credits);
+        Assert.Equal(WorkplaceDemo.FixtureId("course/0/0/2026-autumn"), before.Summary.NextExam!.CourseId);
+        Assert.Equal(new DateOnly(2027, 1, 18), before.Summary.NextExam.Date);
+        var otherGrades = other.Disciplines.Where(x => x.Final?.Kind == FinalKind.Grade).Select(x => (decimal)x.Final!.Value!.Value).ToArray();
+        Assert.Equal(otherGrades.Length == 0 ? null : otherGrades.Average(), other.Summary.Average);
         var forged = (await first.GetFromJsonAsync<PerformanceResponse>(StudentUrl + $"&studentId={secondProfile.Id}&universityId={Guid.NewGuid()}"))!;
-        Assert.Equal(2, forged.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
+        Assert.Null(forged.Disciplines.Single(x => x.Id == CourseId).Final);
         Assert.Equal(HttpStatusCode.Forbidden, (await first.GetAsync(StaffUrl + "/groups")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync(StudentUrl)).StatusCode);
         var semesters = (await first.GetFromJsonAsync<SemestersResponse>("/api/academic-performance/semesters"))!;
@@ -84,9 +93,9 @@ public sealed class AcademicPerformanceTests
         var after = (await first.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         Assert.Equal(4, after.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
         Assert.Equal(4m, after.Summary.Average);
-        Assert.Equal(2, after.Summary.Passed);
+        Assert.Equal(1, after.Summary.Passed);
         Assert.Equal(0, after.Summary.Debts);
-        Assert.Equal(5m, (await second.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Summary.Average);
+        Assert.Null((await second.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Summary.Average);
         using (var scope = env.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -102,6 +111,36 @@ public sealed class AcademicPerformanceTests
         // A new cookie session still observes the persisted value.
         using var fresh = await env.Login("student1@demo.invalid", env.Password1);
         Assert.Equal(4m, (await fresh.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Summary.Average);
+    }
+
+    [Fact]
+    public async Task AssignedTeacherCanSaveBoundedScoresAndStudentReadsOnlyTheirOwnPoints()
+    {
+        await using var env = await TestApp.Create();
+        using var staff = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var first = await env.Login("student1@demo.invalid", env.Password1);
+        using var second = await env.Login("student2@demo.invalid", env.Password2);
+        var profile = (await first.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
+        var courseId = WorkplaceDemo.FixtureId("course/0/0/2026-autumn");
+        var planUrl = $"/api/academic-performance/staff/courses/{courseId}/points-plan";
+        var plan = (await staff.GetFromJsonAsync<CoursePointPlanDto>(planUrl))!;
+        Assert.Equal(100m, plan.Components.Sum(x => x.Maximum));
+        var component = plan.Components.First(x => !x.IsAttendance);
+        await Csrf(staff);
+        var scoreUrl = $"/api/academic-performance/staff/students/{profile.Id}/courses/{courseId}/points/{component.Id}";
+        Assert.Equal(HttpStatusCode.BadRequest, (await staff.PutAsJsonAsync(scoreUrl, new SavePointScoreRequest(component.Maximum + 1, 0))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(scoreUrl, new SavePointScoreRequest(17, 0))).StatusCode);
+        var own = (await first.GetFromJsonAsync<StudentPointsDto>($"/api/academic-performance/student/courses/{courseId}/points"))!;
+        Assert.Equal(100m, own.Maximum);
+        Assert.Equal(17m, own.Components.Single(x => x.Id == component.Id).Points);
+        Assert.True(own.Components.Single(x => x.Kind == "attendance").Incomplete);
+        Assert.NotNull(own.Components.Single(x => x.Kind == "attendance").Points);
+        var other = (await second.GetFromJsonAsync<StudentPointsDto>($"/api/academic-performance/student/courses/{courseId}/points"))!;
+        Assert.Null(other.Components.Single(x => x.Id == component.Id).Points);
+        var compensation = plan.Components.First(x => x.Id != component.Id).Id;
+        var changed = plan.Components.Select(x => x.Id == component.Id ? x with { Maximum = x.Maximum - 1 } : x.Id == compensation ? x with { Maximum = x.Maximum + 1 } : x).ToArray();
+        var locked = await staff.PutAsJsonAsync(planUrl, new SavePointPlanRequest(plan.Version, changed.Select(x => new PointComponentInput(x.Id, x.Name, x.Kind, x.Maximum, x.IsAttendance)).ToArray()));
+        Assert.True(locked.StatusCode == HttpStatusCode.Conflict, $"Expected conflict, got {(int)locked.StatusCode}: {await locked.Content.ReadAsStringAsync()}");
     }
 
     [Fact]
@@ -170,12 +209,14 @@ public sealed class AcademicPerformanceTests
         }
         var creditId = Guid.Parse("60000000-0000-0000-0000-000000000001");
         var creditUrl = StaffUrl + $"/students/{profile.Id}/courses/{creditId}/result";
+        var beforeCredit = (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
         Assert.Equal(HttpStatusCode.BadRequest, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.Grade, 5))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(creditUrl, new SaveResultRequest(FinalKind.FailedCredit, null, 0, "Исправлена ошибка ввода"))).StatusCode);
         var responseData = (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!;
-        Assert.Equal(2, responseData.Summary.Debts);
-        Assert.Equal(0, responseData.Summary.Credits);
-        Assert.Equal(2m, responseData.Summary.Average); // Credits never enter the numerical average.
+        Assert.Equal(beforeCredit.Summary.Average, responseData.Summary.Average); // Credits never enter the numerical average.
+        Assert.Equal(beforeCredit.Summary.Debts, responseData.Summary.Debts);
+        Assert.Equal(beforeCredit.Summary.Credits, responseData.Summary.Credits);
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PutAsJsonAsync(url, new SaveResultRequest(FinalKind.Grade, 5))).StatusCode);
         using (var scope = env.Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -300,10 +341,12 @@ public sealed class AcademicPerformanceTests
                 {
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                     var teacher = await db.Users.SingleAsync(u => u.Email == "staff@demo.invalid");
-                    var originalIds = new[] { CourseId, Guid.Parse("60000000-0000-0000-0000-000000000001") };
+            var originalIds = new[] { CourseId, Guid.Parse("60000000-0000-0000-0000-000000000001") };
+            await db.Set<TeachingAssignment>().Where(a => originalIds.Contains(a.CourseId)).ExecuteDeleteAsync();
                     var originalCourses = await db.Set<AcademicCourse>().Where(c => originalIds.Contains(c.Id)).ToArrayAsync();
                     var linkedCourses = await db.Set<TeachingAssignment>().Select(a => a.CourseId).Distinct().ToArrayAsync();
                     await db.Set<AcademicResult>().Where(r => linkedCourses.Contains(r.CourseId)).ExecuteDeleteAsync();
+                    await db.Set<AcademicResult>().Where(r => r.CourseId == CourseId).ExecuteDeleteAsync();
                     foreach (var course in originalCourses)
                         db.Add(new TeachingAssignment { Id = Guid.NewGuid(), UniversityId = teacher.UniversityId,
                             TeacherUserId = teacher.Id, GroupId = course.GroupId, CourseId = course.Id });

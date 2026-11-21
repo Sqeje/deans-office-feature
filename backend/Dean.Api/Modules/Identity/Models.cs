@@ -41,6 +41,11 @@ public sealed class StudentProfile
         get; set;
     }
     public StudyGroup StudyGroup { get; set; } = null!;
+    public string? Faculty { get; set; }
+    public string? Program { get; set; }
+    public int? CourseNumber { get; set; }
+    public int? SemesterNumber { get; set; }
+    public int? StudyDurationYears { get; set; }
 }
 public sealed class StaffGrant
 {
@@ -58,6 +63,7 @@ public sealed class StaffGrant
     }
 }
 public sealed record LoginRequest(string Email, string Password);
-public sealed record ProfileResponse(string Id, string FullName, string Email, Guid UniversityId, string University, string Group);
+public sealed record ProfileResponse(string Id, string FullName, string Email, Guid UniversityId, string University, string Group,
+    string? Faculty, string? Program, int? CourseNumber, int? SemesterNumber, int? StudyDurationYears);
 public sealed record CsrfResponse(string Token);
 public sealed record SessionResponse(string UserId, Guid UniversityId, string DisplayName, string[] Roles, string? StudentId, Dean.Api.Kernel.Security.PermissionGrantResponse[] Permissions, string[] Areas);

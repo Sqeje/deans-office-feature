@@ -90,13 +90,15 @@ for (const width of [360, 390, 768, 1024, 1280, 1440])
           email: "demo@example.invalid",
           universityId: "demo",
           university: "Демонстрационный университет",
+          faculty: "Факультет информационных технологий",
+          program: "Прикладная информатика",
           group: "ПИ-21",
         },
       }),
     );
     await page.goto("/student");
     await expect(
-      page.getByText("Демонстрационный университет · Группа ПИ-21", { exact: true }),
+      page.getByText("Демонстрационный университет · Факультет информационных технологий · Прикладная информатика · Группа ПИ-21", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Демонстрационные данные — не связаны", { exact: false }),

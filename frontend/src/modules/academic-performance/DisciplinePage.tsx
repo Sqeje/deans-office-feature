@@ -1,9 +1,27 @@
 import { Icon } from "./Icon";
 import { Result } from "./Views";
 import { formatDate, type Discipline } from "./model";
+import { useEffect, useState } from "react";
+import { ApiError } from "../../shared/api";
+import { loadStudentPoints, type StudentPoints } from "./api";
 export function DisciplinePage({ discipline: d }: { discipline: Discipline }) {
+  const [points, setPoints] = useState<StudentPoints>();
+  const [pointsError, setPointsError] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setPoints(undefined); setPointsError(false);
+    loadStudentPoints(d.id, controller.signal).then(setPoints).catch(error => { if (!controller.signal.aborted && !(error instanceof ApiError && error.status === 404)) setPointsError(true); });
+    return () => controller.abort();
+  }, [d.id]);
   return (
     <>
+      <section className="academic-panel academic-points" aria-labelledby="points-title">
+        <div className="academic-points-heading"><h2 id="points-title">Баллы за дисциплину</h2>{points && <strong>{points.earned} из {points.maximum}</strong>}</div>
+        {pointsError ? <p role="alert">Не удалось загрузить балльный план.</p> : !points ? <p className="muted" role="status">Загружаем баллы…</p> : points.components.length === 0 ? <p className="muted">Балльный план ещё не опубликован.</p> : <>
+          <ul>{points.components.map(component => <li key={component.id}><span>{component.name}{component.incomplete && <small> · Есть неотмеченные занятия</small>}</span><strong>{component.points === null ? "Не выставлено" : `${component.points} из ${component.maximum}`}</strong></li>)}</ul>
+          {points.attendanceIncomplete && <p className="muted">Баллы за посещение предварительные: журнал заполнен не полностью.</p>}
+        </>}
+      </section>
       <section
         className="academic-attestation"
         aria-label="Итоговая аттестация"

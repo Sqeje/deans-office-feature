@@ -251,19 +251,22 @@ test("source loading, failure, retry, empty assessment and stale week protection
   await expect(host.locator(".schedule-row")).toHaveCount(3);
   await expect(host.getByRole("button", { name: "Сохранить на устройство" })).toBeEnabled();
   await host.getByRole("button", { name: "Неделя", exact: true }).click();
-  await host.getByRole("button", { name: /Следующая неделя/ }).click();
   await expect.poll(() => page.evaluate(() => window.scheduleTest.count())).toBe(3);
   await host.getByRole("button", { name: /Следующая неделя/ }).click();
   await expect.poll(() => page.evaluate(() => window.scheduleTest.count())).toBe(4);
   expect(await page.evaluate(() => window.scheduleTest.aborted(2))).toBe(true);
-  await page.evaluate(() => window.scheduleTest.resolve(3));
+  await host.getByRole("button", { name: /Следующая неделя/ }).click();
+  await expect.poll(() => page.evaluate(() => window.scheduleTest.count())).toBe(5);
+  expect(await page.evaluate(() => window.scheduleTest.aborted(3))).toBe(true);
+  await page.evaluate(() => window.scheduleTest.resolve(4));
   await expect(host.locator(".schedule-row")).toHaveCount(18);
   await page.evaluate(() => window.scheduleTest.resolve(2, true));
+  await page.evaluate(() => window.scheduleTest.resolve(3, true));
   await expect(host.locator(".schedule-row")).toHaveCount(18);
   await expect(host.locator(".schedule-day-title time").first()).toHaveAttribute("datetime", "2026-11-23");
   await host.getByRole("button", { name: "Контрольные и экзамены", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => window.scheduleTest.count())).toBe(5);
-  await page.evaluate(() => window.scheduleTest.resolve(4, true));
+  await expect.poll(() => page.evaluate(() => window.scheduleTest.count())).toBe(6);
+  await page.evaluate(() => window.scheduleTest.resolve(5, true));
   await expect(host.getByRole("heading", { name: "В этом семестре контрольных и экзаменов нет" })).toBeVisible();
 });
 

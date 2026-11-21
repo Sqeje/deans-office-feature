@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "../../shared/api";
 import { scheduleApi } from "./api";
-import { dateKey, weekOf } from "./model";
+import { dateKey } from "./model";
 
-export interface NextLessonSummary { id: string; title: string; startsAt: string; room: string; href: string }
+export interface NextLessonSummary { id: string; title: string; startsAt: string; endsAt: string; room: string; href: string; current: boolean }
 type NextBlock = { status: "loading" } | { status: "error"; retry: () => void } | { status: "success"; data: NextLessonSummary | null };
 export function useNextLesson(userId?: string) {
   const [attempt, setAttempt] = useState(0);
@@ -21,9 +21,11 @@ export function useNextLesson(userId?: string) {
     setBlock({ status: "loading" }); setExpired(false);
     scheduleApi.next(controller.signal).then(({ event }) => {
       if (controller.signal.aborted) return;
-      setBlock({ status: "success", data: event ? { id: event.id, title: event.title, startsAt: event.startsAt,
+      const now = Date.now();
+      setBlock({ status: "success", data: event ? { id: event.id, title: event.title, startsAt: event.startsAt, endsAt: event.endsAt,
         room: `${event.room} · ${event.kind} · Группа ${event.groupName}`,
-        href: `/student/schedule?view=week&week=${weekOf(dateKey(new Date(event.startsAt)))[0]}&event=${event.id}#lesson-${event.id}` } : null });
+        current: Date.parse(event.startsAt) <= now && now < Date.parse(event.endsAt),
+        href: `/student/schedule?view=today&day=${dateKey(new Date(event.startsAt))}&event=${event.id}#lesson-${event.id}` } : null });
     }).catch(error => {
       if (controller.signal.aborted) return;
       if (error instanceof ApiError && error.status === 401) setExpired(true);

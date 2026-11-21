@@ -13,7 +13,6 @@ import { Denied, ErrorState, Loading } from "./states";
 import { modulePages } from "../modules/sections";
 import type { Area, ModulePage } from "./module";
 import { Button } from "../components/ui/button";
-import { PerformanceShell } from "../modules/academic-performance/PerformanceShell";
 import { Brand, PrototypeNotice } from "./brand";
 export function PageAccess({
   page,
@@ -110,20 +109,6 @@ function CabinetContent({ area }: { area: Area }) {
       (!p.permission ||
         session.permissions.some((g) => g.permission === p.permission)),
   );
-  if (area === "student" && location.pathname === "/student/academic-performance") {
-    return (
-      <PerformanceShell
-        mainRef={main}
-        pages={pages}
-        name={session.displayName}
-        onLogout={() => void handleLogout()}
-        loggingOut={loggingOut}
-        logoutError={logoutError}
-      >
-        <Outlet />
-      </PerformanceShell>
-    );
-  }
   const initials = session.displayName
     .split(/\s+/)
     .slice(0, 2)

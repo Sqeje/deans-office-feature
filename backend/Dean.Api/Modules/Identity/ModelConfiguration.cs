@@ -26,6 +26,9 @@ public sealed class StudentConfiguration : IEntityTypeConfiguration<StudentProfi
         b.HasAlternateKey(x => new { x.UserId, x.StudyGroupId, x.UniversityId });
         b.HasOne(x => x.User).WithOne().HasForeignKey<StudentProfile>(x => new { x.UserId, x.UniversityId }).HasPrincipalKey<ApplicationUser>(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.StudyGroup).WithMany().HasForeignKey(x => new { x.StudyGroupId, x.UniversityId }).HasPrincipalKey(x => new { x.Id, x.UniversityId }).OnDelete(DeleteBehavior.Restrict);
+        b.Property(x => x.Faculty).HasMaxLength(200);
+        b.Property(x => x.Program).HasMaxLength(200);
+        b.ToTable(t => t.HasCheckConstraint("CK_StudentProfiles_AcademicProgress", "(\"CourseNumber\" IS NULL OR \"CourseNumber\" BETWEEN 1 AND 10) AND (\"SemesterNumber\" IS NULL OR \"SemesterNumber\" BETWEEN 1 AND 20) AND (\"StudyDurationYears\" IS NULL OR \"StudyDurationYears\" BETWEEN 1 AND 10)"));
     }
 }
 public sealed class StaffGrantConfiguration : IEntityTypeConfiguration<StaffGrant>

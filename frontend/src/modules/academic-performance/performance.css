@@ -919,3 +919,15 @@
 .performance-staff > .select-field select { width:100%; min-width:0; max-width:100%; }
 .performance-result-form { min-width:0; }
 .performance-result-form button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.academic-points { margin-bottom: 24px; }
+.academic-points-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.academic-points-heading strong { font-variant-numeric: tabular-nums; font-size: 20px; }
+.academic-points ul { list-style: none; padding: 0; margin: 16px 0 0; }
+.academic-points li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--color-border); }
+.academic-points li strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.academic-points small { color: var(--color-warning); }
+@media (max-width: 600px) { .academic-points li { flex-direction: column; gap: 4px; } }
+.points-editor-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .5fr); align-items: end; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+.points-editor-row label { display: grid; gap: 6px; }
+.points-editor-row input { min-height: 44px; width: 100%; border: 1px solid var(--color-control-border); border-radius: 10px; padding: 8px 12px; }
+@media (max-width: 600px) { .points-editor-row { grid-template-columns: 1fr; } }

@@ -1,7 +1,7 @@
 import { NotificationSummary } from "../notifications/Page";
 import { RequestSummary } from '../requests/Summary';
 import { requestStatuses, requestDetailsUrl } from "../requests/model";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
 import { api, ApiError, type Profile } from "../../shared/api";
@@ -9,6 +9,8 @@ import { useSession } from "../../shared/session";
 import { AcademicSummary } from "../academic-performance/Summary";
 import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
 import { useNextLesson } from "../schedule/NextLesson";
+import { loadPerformance, loadSemesters } from "../academic-performance/api";
+import { useRemote } from "../academic-performance/remote";
 export type Block<T> =
   | { status: "loading" }
   | { status: "error"; retry: () => void }
@@ -112,7 +114,7 @@ export function HomeSummaries({
           {(lesson) => (
             <>
               <p className="lesson-title">
-                {time(lesson.startsAt)} · {lesson.title}
+                {lesson.current ? "Сейчас идёт" : "Ближайшее занятие"} · {time(lesson.startsAt)} · {lesson.title}
               </p>
               <p>{lesson.href ? `${date(lesson.startsAt)} · ` : ""}{lesson.room}</p>
             </>
@@ -128,7 +130,8 @@ export function HomeSummaries({
             <div className="summary-row">
               <CalendarDays aria-hidden="true" />
               <div>
-                <h3>{event.title}</h3>
+                {event.courseId && event.semesterId ? <Link to={`/student/academic-performance?${new URLSearchParams({ semester: event.semesterId, discipline: event.courseId })}`}><h3>{event.title}</h3></Link> : <h3>{event.title}</h3>}
+                {event.kind && <p>{event.kind}</p>}
                 <p>До {date(event.deadline)}</p>
               </div>
             </div>
@@ -230,6 +233,23 @@ export function StudentHome() {
 
   const { session } = useSession();
   const next = useNextLesson(session?.userId);
+  const semesters = useRemote("home-semesters", loadSemesters);
+  const semesterId = semesters.data?.defaultSemesterId ?? "";
+  const performanceLoad = useCallback((signal: AbortSignal) => loadPerformance(semesterId, signal), [semesterId]);
+  const performance = useRemote(semesterId, performanceLoad);
+  const nextExam = performance.data?.summary?.nextExam;
+  const course = nextExam && performance.data?.disciplines.find((item) => item.id === nextExam.courseId);
+  const eventBlock = semesters.error || performance.error
+    ? { status: "error" as const, retry: () => { semesters.retry(); performance.retry(); } }
+    : !semesters.data || (semesterId && !performance.data)
+      ? { status: "loading" as const }
+      : { status: "success" as const, data: nextExam ? {
+          title: nextExam.name,
+          deadline: nextExam.date,
+          courseId: nextExam.courseId,
+          kind: course?.assessment === "exam" ? "Экзамен" : course?.assessment === "credit" ? "Зачёт" : "Аттестация",
+          semesterId,
+        } : null };
   const [profile, setProfile] = useState<Profile | null>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -271,12 +291,12 @@ export function StudentHome() {
         </div>
       ) : profile ? (
         <p className="muted">
-          {profile.university} · Группа {profile.group}
+          {profile.university} · {profile.faculty ?? "Факультет не указан"} · {profile.program ?? "Направление не указано"} · Группа {profile.group}
         </p>
       ) : (
         <p role="status">Загружаем профиль…</p>
       )}
-      <HomeSummaries data={homeDemo} blocks={{ lesson: next.block }} livePerformance liveRequests liveNotifications />
+      <HomeSummaries data={homeDemo} blocks={{ lesson: next.block, event: eventBlock }} livePerformance liveRequests liveNotifications />
     </>
   );
 }

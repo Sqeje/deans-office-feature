@@ -4,8 +4,8 @@ import type { RequestRecord } from "../requests/model";
 export interface HomeDemoSnapshot {
   asOf: string;
   timeZone: string;
-  lesson: { id: string; title: string; startsAt: string; room: string; href?: string } | null;
-  event: { title: string; deadline: string } | null;
+  lesson: { id: string; title: string; startsAt: string; endsAt?: string; room: string; href?: string; current?: boolean } | null;
+  event: { title: string; deadline: string; courseId?: string; kind?: string; semesterId?: string } | null;
   performance: { average: number; maximum: number; passed: number } | null;
   request: Pick<RequestRecord, 'id' | 'title' | 'status' | 'submittedAt'> | null;
   notifications: { id: string; title: string; unread: boolean }[];

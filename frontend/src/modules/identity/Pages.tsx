@@ -33,6 +33,11 @@ export function ProfilePage() {
           ["Почта", profile.email],
           ["Университет", profile.university],
           ["Группа", profile.group],
+          ["Факультет", profile.faculty ?? "Не указан"],
+          ["Направление", profile.program ?? "Не указано"],
+          ["Курс обучения", profile.courseNumber ? `${profile.courseNumber} курс` : "Не указан"],
+          ["Семестр", profile.semesterNumber ? `${profile.semesterNumber} семестр` : "Не указан"],
+          ["Продолжительность обучения", profile.studyDurationYears ? `${profile.studyDurationYears} года` : "Не указана"],
         ].map(([k, v]) => (
           <div key={k}>
             <dt className="text-sm text-slate-500">{k}</dt>

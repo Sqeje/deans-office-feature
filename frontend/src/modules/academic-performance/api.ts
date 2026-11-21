@@ -11,6 +11,8 @@ import type {
 export type Group = components["schemas"]["DirectoryGroup"];
 export type Student = components["schemas"]["DirectoryStudent"];
 export type ResultInput = components["schemas"]["SaveResultRequest"];
+export type StudentPoints = components["schemas"]["StudentPointsDto"];
+export type PointPlan = components["schemas"]["CoursePointPlanDto"];
 type Performance = components["schemas"]["PerformanceResponse"];
 
 function grade(input: number | string | null | undefined): Grade {
@@ -88,6 +90,27 @@ export const loadPerformance: PerformanceLoader = async (
   await check(response, error);
   return adapt(data!);
 };
+export async function loadStudentPoints(courseId: string, signal: AbortSignal): Promise<StudentPoints> {
+  const { data, error, response } = await client.GET("/api/academic-performance/student/courses/{courseId}/points", { params: { path: { courseId } }, signal });
+  await check(response, error);
+  return data!;
+}
+export async function loadPointPlan(courseId: string, signal: AbortSignal): Promise<PointPlan> {
+  const { data, error, response } = await client.GET("/api/academic-performance/staff/courses/{courseId}/points-plan", { params: { path: { courseId } }, signal });
+  await check(response, error); return data!;
+}
+export async function loadStaffPointScores(studentId: string, courseId: string, signal: AbortSignal) {
+  const { data, error, response } = await client.GET("/api/academic-performance/staff/students/{studentId}/courses/{courseId}/points", { params: { path: { studentId, courseId } }, signal });
+  await check(response, error); return data!;
+}
+export async function savePointPlan(courseId: string, body: components["schemas"]["SavePointPlanRequest"]) {
+  const { data, error, response } = await client.PUT("/api/academic-performance/staff/courses/{courseId}/points-plan", { params: { path: { courseId } }, body, headers: await csrf() });
+  await check(response, error); return data!;
+}
+export async function savePointScore(studentId: string, courseId: string, componentId: string, body: components["schemas"]["SavePointScoreRequest"]) {
+  const { error, response } = await client.PUT("/api/academic-performance/staff/students/{studentId}/courses/{courseId}/points/{componentId}", { params: { path: { studentId, courseId, componentId } }, body, headers: await csrf() });
+  await check(response, error);
+}
 export async function loadGroups(signal: AbortSignal): Promise<Group[]> {
   const { data, error, response } = await client.GET(
     "/api/academic-performance/staff/groups",

@@ -20,7 +20,10 @@ export function Login() {
   const lock = useRef(false);
   const form = useRef<HTMLFormElement>(null);
   const [params] = useSearchParams();
-  const expired = useLocation().state?.expired || params.get("expired") === "1";
+  const location = useLocation();
+  const expired = location.state?.expired || params.get("expired") === "1";
+  const requestedRole = location.state?.role ?? params.get("role");
+  const roleLabel = requestedRole === "student" ? "студента" : requestedRole === "staff" ? "сотрудника" : null;
   const navigate = useNavigate();
   const { session, accountChanged, refresh, logout } = useSession();
   useEffect(() => {
@@ -82,7 +85,8 @@ export function Login() {
       <section className="auth-panel">
         <Brand />
         <form ref={form} onSubmit={submit} noValidate aria-busy={busy}>
-          <h1>Вход в кабинет</h1>
+          <h1>{roleLabel ? `Вход для ${roleLabel}` : "Вход в кабинет"}</h1>
+          {roleLabel && <p className="muted">Войдите под своей учётной записью. Доступные разделы определяются правами аккаунта.</p>}
           {accountChanged ? <p role="status">Учётная запись в другой вкладке изменена или выполнен выход. Войдите снова.</p>
             : expired && <p role="status">Сеанс завершён. Войдите снова</p>}
           <div className="field">
@@ -164,6 +168,11 @@ export function Login() {
         <Link className="auth-back" to="/">
           ← Вернуться на главную
         </Link>
+        <aside className="public-information" aria-label="Помощь со входом">
+          <h2>Нет логина или пароля?</h2>
+          <p>Воспользуйтесь демонстрационными контактами для вопросов по доступу.</p>
+          <Link to="/contacts">Контакты и помощь</Link>
+        </aside>
         <PrototypeNotice />
       </section>
     </main>

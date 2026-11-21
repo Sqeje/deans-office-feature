@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../../shared/api";
 import { CalendarDays } from "lucide-react";
@@ -19,26 +19,33 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   const [now, setNow] = useState(getNow);
   const [attempt, setAttempt] = useState(0);
   const [load, setLoad] = useState<Load>({ key: "", status: "loading" });
+  const requestSequence = useRef(0);
+  const getNowRef = useRef(getNow);
+  getNowRef.current = getNow;
   const today = dateKey(now);
   const category = search.get("kind") === "assessments" ? "assessment" : "lesson";
   const mode = search.get("view") === "week" ? "week" : "today";
+  const rawDay = search.get("day");
+  const selectedDay = mode === "today" && validDate(rawDay) ? rawDay : today;
   const rawWeek = search.get("week");
   const monday = mode === "week" && validDate(rawWeek) ? weekOf(rawWeek)[0] : weekOf(today)[0];
   const semester = semesterOf(today);
-  const start = category === "assessment" ? semester.start : monday;
-  const end = category === "assessment" ? semester.end : addDays(monday, 6);
+  const start = category === "assessment" ? semester.start : mode === "today" ? selectedDay : monday;
+  const end = category === "assessment" ? semester.end : mode === "today" ? selectedDay : addDays(monday, 6);
   const key = `${entity.kind}/${entity.id}/${category}/${start}/${end}`;
+  const activeKey = useRef(key);
+  activeKey.current = key;
   const { kind: entityKind, id: entityId } = entity;
 
   useEffect(() => {
-    const refresh = () => setNow(getNow());
+    const refresh = () => setNow(getNowRef.current());
     const visible = () => { if (!document.hidden) refresh(); };
     refresh();
     const timer = window.setInterval(refresh, 60_000);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
     return () => { clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); };
-  }, [getNow]);
+  }, []);
 
   useEffect(() => {
     if (!entity.personal) return;
@@ -53,6 +60,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
     const next = new URLSearchParams(search);
     if (next.has("kind") && !["lessons", "assessments"].includes(next.get("kind")!)) next.delete("kind");
     if (next.has("view") && !["today", "week"].includes(next.get("view")!)) next.delete("view");
+    if (next.has("day") && !validDate(rawDay)) next.delete("day");
     if (next.has("week")) {
       if (!validDate(rawWeek)) next.delete("week");
       else next.set("week", weekOf(rawWeek)[0]);
@@ -62,16 +70,16 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
 
   useEffect(() => {
     const controller = new AbortController();
-    let active = true;
+    const sequence = ++requestSequence.current;
     setLoad({ key, status: "loading" });
     async function fetch() {
       try {
         const events = await source({ entity: { kind: entityKind, id: entityId }, category, start, end }, controller.signal);
-        if (active) setLoad({ key, status: "success", events });
-      } catch (error) { if (active) setLoad({ key, status: "error", error }); }
+        if (!controller.signal.aborted && sequence === requestSequence.current && key === activeKey.current) setLoad({ key, status: "success", events });
+      } catch (error) { if (!controller.signal.aborted && sequence === requestSequence.current && key === activeKey.current) setLoad({ key, status: "error", error }); }
     }
     void fetch();
-    return () => { active = false; controller.abort(); };
+    return () => { controller.abort(); };
   }, [key, entityKind, entityId, category, start, end, source, attempt]);
 
   useEffect(() => {
@@ -86,9 +94,9 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   }
   const state = load.key === key ? load : { status: "loading" as const };
   const events = state.status === "success" ? [...state.events].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  const visible = events.filter(e => category === "assessment" || mode === "week" || dateKey(new Date(e.startsAt)) === today);
+  const visible = events.filter(e => category === "assessment" || mode === "week" || dateKey(new Date(e.startsAt)) === selectedDay);
   const days = category === "assessment" ? [...new Set(visible.map(e => dateKey(new Date(e.startsAt))))]
-    : mode === "today" ? [today] : weekOf(monday);
+    : mode === "today" ? [selectedDay] : weekOf(monday);
   const table = category === "lesson" && mode === "week";
   if (state.status === "error" && state.error instanceof ApiError && state.error.status === 401)
     return <Navigate to="/login" state={{ expired: true }} replace />;
@@ -97,8 +105,8 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
       <div>{heading && <h1>{heading}</h1>}{description && <p className="muted">{description}</p>}</div>
       <ExportButton key={`${key}/${mode}/${today}`} ready={state.status === "success"}
         schedule={{ entity, events: visible, category, mode, now,
-          start: category === "lesson" && mode === "today" ? today : start,
-          end: category === "lesson" && mode === "today" ? today : end }} />
+          start: category === "lesson" && mode === "today" ? selectedDay : start,
+          end: category === "lesson" && mode === "today" ? selectedDay : end }} />
     </div>
     <div className="schedule-modes schedule-kind-modes" role="group" aria-label="Тип событий">
       <Button variant="outline" aria-pressed={category === "lesson"} onClick={() => update({ kind: "lessons" })}>Занятия</Button>
@@ -106,7 +114,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
     </div>
     {category === "lesson" ? <>
       <div className="schedule-modes" role="group" aria-label="Период занятий">
-        <Button variant="outline" aria-pressed={mode === "today"} onClick={() => update({ view: "today", week: null })}>Сегодня</Button>
+        <Button variant="outline" aria-pressed={mode === "today"} onClick={() => update({ view: "today", week: null, day: null })}>Сегодня</Button>
         <Button variant="outline" aria-pressed={mode === "week"} onClick={() => update({ view: "week" })}>Неделя</Button>
       </div>
       {mode === "week" && <div className="schedule-week-controls" role="group" aria-label="Навигация по неделям">

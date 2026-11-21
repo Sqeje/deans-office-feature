@@ -26,12 +26,10 @@ test("public home works without API and offers honest public paths", async ({
   await expect(page).toHaveURL(/\/schedule$/);
   await expect(page.getByRole("heading", { name: "Все расписания" })).toBeVisible();
   await page.getByRole("link", { name: "На главную", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Связаться с нами", exact: true })
-    .click();
-  await expect(page.getByRole("status")).toContainText(
-    "Контакты университета пока не опубликованы",
-  );
+  await page.getByRole("link", { name: "Связаться с нами", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Контакты и помощь" })).toBeVisible();
+  await expect(page.getByText("Демонстрационные контакты прототипа", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "На главную", exact: true }).click();
   await page.getByRole("link", { name: "О разделе поступления" }).click();
   await expect(page).toHaveURL(/applicants/);
   await expect(
@@ -92,9 +90,10 @@ test("public information supports keyboard and both entry cards reach login", as
   await page.getByRole("link", { name: "Продолжить как студент" }).click();
   await expect(page).toHaveURL(/login/);
   await expect(
-    page.getByRole("heading", { name: "Вход в кабинет" }),
+    page.getByRole("heading", { name: "Вход для студента" }),
   ).toBeVisible();
   await page.goBack();
   await page.getByRole("link", { name: "Продолжить как сотрудник" }).click();
   await expect(page).toHaveURL(/login/);
+  await expect(page.getByRole("heading", { name: "Вход для сотрудника" })).toBeVisible();
 });

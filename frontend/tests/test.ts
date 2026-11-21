@@ -9,6 +9,9 @@ export const test = base.extend<{ mockIdentityBoundary: void }>({
       const path = new URL(route.request().url()).pathname;
       if (path === "/api/notifications/student") return route.fulfill({ json: { items: [], unreadCount: 0 } });
       if (path === "/api/schedule/next") return route.fulfill({ json: { event: null, timeZone: "Europe/Moscow" } });
+      if (path.match(/^\/api\/academic-performance\/staff\/courses\/[^/]+\/points-plan$/)) return route.fulfill({ json: { courseId: path.split("/")[5], version: 0, components: [] } });
+      if (path.match(/^\/api\/academic-performance\/staff\/students\/[^/]+\/courses\/[^/]+\/points$/)) return route.fulfill({ json: [] });
+      if (path.match(/^\/api\/academic-performance\/student\/courses\/[^/]+\/points$/)) return route.fulfill({ json: { courseId: path.split("/")[5], planVersion: 0, components: [], earned: 0, maximum: 0, attendanceIncomplete: false } });
       return route.fulfill({ status: 501, json: { code: "unmocked_test_endpoint" } });
     });
     await use();

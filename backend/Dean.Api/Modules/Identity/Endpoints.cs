@@ -64,7 +64,8 @@ public static class Endpoints
             if (actor.StudentId is null || !actor.Roles.Contains("Student"))
                 return Results.Forbid();
             var profile = await db.StudentProfiles.AsNoTracking().Where(x => x.UserId == actor.StudentId && x.UniversityId == actor.UniversityId)
-                .Select(x => new ProfileResponse(x.UserId, x.User.DisplayName, x.User.Email!, x.UniversityId, x.StudyGroup.University.Name, x.StudyGroup.Name))
+                .Select(x => new ProfileResponse(x.UserId, x.User.DisplayName, x.User.Email!, x.UniversityId, x.StudyGroup.University.Name, x.StudyGroup.Name,
+                    x.Faculty, x.Program, x.CourseNumber, x.SemesterNumber, x.StudyDurationYears))
                 .SingleOrDefaultAsync(ctx.RequestAborted);
             return profile is null ? Results.Forbid() : Results.Ok(profile);
         }).Produces<ProfileResponse>().Produces(401).Produces(403);

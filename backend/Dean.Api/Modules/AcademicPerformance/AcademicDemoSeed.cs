@@ -33,7 +33,17 @@ public static class AcademicDemoSeed
         {
             var email = $"student{i}@demo.invalid";
             var studentId = await db.Users.Where(x => x.UniversityId == universityId && x.Email == email).Select(x => x.Id).SingleAsync();
-            if (!await db.StudentProfiles.AnyAsync(p => p.UserId == studentId && p.UniversityId == universityId && p.StudyGroupId == groupId)) continue;
+            var profile = await db.StudentProfiles.SingleOrDefaultAsync(p => p.UserId == studentId && p.UniversityId == universityId && p.StudyGroupId == groupId);
+            if (profile is null) continue;
+            // Illustrative only; fill missing demo profile fields without overwriting edits.
+            if (i == 1)
+            {
+                profile.Faculty ??= "Факультет информационных технологий";
+                profile.Program ??= "Прикладная информатика";
+                profile.CourseNumber ??= 4;
+                profile.SemesterNumber ??= 7;
+                profile.StudyDurationYears ??= 4;
+            }
             foreach (var course in courses)
             {
                 // Never overwrite a result entered by staff, even after rerunning initialization.

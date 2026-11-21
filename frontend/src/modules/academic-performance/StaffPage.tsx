@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "../../shared/session";
 import { Journal } from "./Journal";
+import { PointsEditor } from "./PointsEditor";
 import { loadStaffContext } from "../identity/staffContext";
 import { Button } from "../../components/ui/button";
 import { SelectField, Skeleton } from "../../components/ui/primitives";
@@ -233,6 +234,7 @@ function FinalsPage() {
               canCorrect={!!session?.permissions.some(p => (p.permission === "grades.correct" || (p.permission === "grades.write" && context.data?.assignments.some(a => a.courseId === discipline.id))) && (!p.groupId || p.groupId === groupId))}
             />
           )}
+          {discipline && student && <PointsEditor key={`points/${studentId}/${discipline.id}`} studentId={studentId} courseId={discipline.id} />}
           {discipline && <History key={discipline.version} studentId={studentId} courseId={discipline.id} />}
         </>
       )}

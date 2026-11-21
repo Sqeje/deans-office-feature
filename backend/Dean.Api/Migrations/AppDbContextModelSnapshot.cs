@@ -74,6 +74,11 @@ namespace Dean.Api.Migrations
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -215,6 +220,65 @@ namespace Dean.Api.Migrations
                     b.ToTable("AcademicSemester");
                 });
 
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.CoursePointComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAttendance")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("Maximum")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId", "UniversityId");
+
+                    b.ToTable("CoursePointComponent", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoursePointComponent_Maximum", "\"Maximum\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.CoursePointPlan", b =>
+                {
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("CourseId", "UniversityId");
+
+                    b.HasIndex("CourseId")
+                        .IsUnique();
+
+                    b.ToTable("CoursePointPlan");
+                });
+
             modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.FinalResultHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -324,6 +388,56 @@ namespace Dean.Api.Migrations
                             t.HasCheckConstraint("CK_Journal_Attendance", "\"Attendance\" IN (0,1,2)");
 
                             t.HasCheckConstraint("CK_Journal_Grade", "\"Grade\" IS NULL OR \"Grade\" BETWEEN 2 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.StudentPointScore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Points")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UniversityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId", "UniversityId");
+
+                    b.HasIndex("CourseId", "GroupId", "UniversityId");
+
+                    b.HasIndex("StudentId", "ComponentId", "UniversityId")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId", "GroupId", "UniversityId");
+
+                    b.ToTable("StudentPointScore", t =>
+                        {
+                            t.HasCheckConstraint("CK_StudentPointScore_Points", "\"Points\" IS NULL OR \"Points\" >= 0");
                         });
                 });
 
@@ -486,6 +600,23 @@ namespace Dean.Api.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("text");
 
+                    b.Property<int?>("CourseNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Faculty")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Program")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("SemesterNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("StudyDurationYears")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("StudyGroupId")
                         .HasColumnType("uuid");
 
@@ -496,7 +627,10 @@ namespace Dean.Api.Migrations
 
                     b.HasIndex("StudyGroupId", "UniversityId");
 
-                    b.ToTable("StudentProfiles");
+                    b.ToTable("StudentProfiles", t =>
+                        {
+                            t.HasCheckConstraint("CK_StudentProfiles_AcademicProgress", "(\"CourseNumber\" IS NULL OR \"CourseNumber\" BETWEEN 1 AND 10) AND (\"SemesterNumber\" IS NULL OR \"SemesterNumber\" BETWEEN 1 AND 20) AND (\"StudyDurationYears\" IS NULL OR \"StudyDurationYears\" BETWEEN 1 AND 10)");
+                        });
                 });
 
             modelBuilder.Entity("Dean.Api.Modules.Identity.StudyGroup", b =>
@@ -1071,6 +1205,24 @@ namespace Dean.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.CoursePointComponent", b =>
+                {
+                    b.HasOne("Dean.Api.Modules.AcademicPerformance.CoursePointPlan", null)
+                        .WithMany("Components")
+                        .HasForeignKey("CourseId", "UniversityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.CoursePointPlan", b =>
+                {
+                    b.HasOne("Dean.Api.Modules.AcademicPerformance.AcademicCourse", null)
+                        .WithOne()
+                        .HasForeignKey("Dean.Api.Modules.AcademicPerformance.CoursePointPlan", "CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.FinalResultHistory", b =>
                 {
                     b.HasOne("Dean.Api.Modules.AcademicPerformance.AcademicResult", null)
@@ -1096,6 +1248,30 @@ namespace Dean.Api.Migrations
                         .WithMany("Entries")
                         .HasForeignKey("JournalId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.StudentPointScore", b =>
+                {
+                    b.HasOne("Dean.Api.Modules.AcademicPerformance.CoursePointComponent", null)
+                        .WithMany()
+                        .HasForeignKey("ComponentId", "UniversityId")
+                        .HasPrincipalKey("Id", "UniversityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Dean.Api.Modules.AcademicPerformance.AcademicCourse", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId", "GroupId", "UniversityId")
+                        .HasPrincipalKey("Id", "GroupId", "UniversityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Dean.Api.Modules.Identity.StudentProfile", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId", "GroupId", "UniversityId")
+                        .HasPrincipalKey("UserId", "StudyGroupId", "UniversityId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1324,6 +1500,11 @@ namespace Dean.Api.Migrations
             modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.AcademicResult", b =>
                 {
                     b.Navigation("Grades");
+                });
+
+            modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.CoursePointPlan", b =>
+                {
+                    b.Navigation("Components");
                 });
 
             modelBuilder.Entity("Dean.Api.Modules.AcademicPerformance.LessonJournal", b =>

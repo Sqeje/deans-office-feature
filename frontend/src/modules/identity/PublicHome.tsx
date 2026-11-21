@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -13,7 +13,6 @@ import { Brand, PrototypeNotice } from "../../shared/brand";
 import { Button } from "../../components/ui/button";
 import "./PublicHome.css";
 
-type PublicInfo = "contact";
 export function PublicLayout({
   children,
   infoActions,
@@ -42,33 +41,15 @@ export function PublicLayout({
   );
 }
 export function PublicHome() {
-  const [info, setInfo] = useState<PublicInfo | null>(null);
-  const message = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (info) message.current?.focus();
-  }, [info]);
-  const toggle = (value: PublicInfo) =>
-    setInfo((current) => (current === value ? null : value));
-  function action(value: PublicInfo, label: string) {
-    return (
-      <button
-        type="button"
-        className="public-info-action"
-        aria-controls="public-information"
-        aria-expanded={info === value}
-        onClick={() => toggle(value)}
-      >
-        <Mail aria-hidden="true" />
-        {label}
-      </button>
-    );
+  function contact(label: string) {
+    return <Link className="public-info-action" to="/contacts"><Mail aria-hidden="true" />{label}</Link>;
   }
   return (
     <PublicLayout
       infoActions={
         <>
           <Link className="public-info-action" to="/schedule"><CalendarDays aria-hidden="true" />Расписание</Link>
-          {action("contact", "Связаться")}
+          {contact("Связаться")}
         </>
       }
     >
@@ -88,7 +69,7 @@ export function PublicHome() {
               Учёба, оценки, заявки и расписание
             </p>
             <Button asChild className="role-action">
-              <Link to="/login" aria-label="Продолжить как студент">
+              <Link to="/login" state={{ role: "student" }} aria-label="Продолжить как студент">
                 Продолжить <ArrowRight aria-hidden="true" />
               </Link>
             </Button>
@@ -114,7 +95,7 @@ export function PublicHome() {
               Рабочий кабинет и доступные разделы университета
             </p>
             <Button asChild className="role-action">
-              <Link to="/login" aria-label="Продолжить как сотрудник">
+              <Link to="/login" state={{ role: "staff" }} aria-label="Продолжить как сотрудник">
                 Продолжить <ArrowRight aria-hidden="true" />
               </Link>
             </Button>
@@ -122,26 +103,27 @@ export function PublicHome() {
         </section>
         <div className="public-secondary-actions">
           <Link className="public-info-action" to="/schedule"><CalendarDays aria-hidden="true" />Расписание без входа</Link>
-          {action("contact", "Связаться с нами")}
-        </div>
-        <div
-          id="public-information"
-          hidden={!info}
-          className="public-information"
-          role="status"
-          tabIndex={-1}
-          ref={message}
-        >
-          {info === "contact" ? (
-            <>
-              <h2>Связаться с нами</h2>
-              <p>Контакты университета пока не опубликованы.</p>
-            </>
-          ) : null}
+          {contact("Связаться с нами")}
         </div>
       </main>
     </PublicLayout>
   );
+}
+export function ContactsPage() {
+  return <PublicLayout><main id="public-main" className="applicants-main">
+    <Link to="/">На главную</Link>
+    <h1>Контакты и помощь</h1>
+    <p className="applicants-lead">Демонстрационные контакты прототипа. Они не связаны с реальной службой поддержки.</p>
+    <section className="public-information">
+      <h2>Нет логина или пароля?</h2>
+      <p>Для демонстрации используйте выданную тестовую учётную запись. Сброс пароля и отправка обращений в этом прототипе не подключены.</p>
+      <Link to="/login">Перейти ко входу</Link>
+    </section>
+    <section className="public-information">
+      <h2>Деканат</h2>
+      <p>Условный демонстрационный адрес: <a href="mailto:dean.office@example.invalid">dean.office@example.invalid</a></p>
+    </section>
+  </main></PublicLayout>;
 }
 export function ApplicantsPage() {
   return (
@@ -161,9 +143,6 @@ export function ApplicantsPage() {
           </p>
           <p>Программы обучения и условия поступления пока не опубликованы.</p>
         </section>
-        <Link className="applicants-login" to="/login">
-          Вход для студентов и сотрудников <ArrowRight aria-hidden="true" />
-        </Link>
       </main>
     </PublicLayout>
   );

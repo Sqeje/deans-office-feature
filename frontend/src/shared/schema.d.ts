@@ -739,6 +739,219 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/academic-performance/staff/courses/{courseId}/points-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CoursePointPlanDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavePointPlanRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CoursePointPlanDto"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/students/{studentId}/courses/{courseId}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    studentId: string;
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StudentPointScoreDto"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/staff/students/{studentId}/courses/{courseId}/points/{componentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    studentId: string;
+                    courseId: string;
+                    componentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavePointScoreRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/academic-performance/student/courses/{courseId}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    courseId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StudentPointsDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/academic-performance/staff/courses/{courseId}/journal": {
         parameters: {
             query?: never;
@@ -1558,6 +1771,13 @@ export interface components {
             version: number | string;
             rejectionReason?: null | string;
         };
+        CoursePointPlanDto: {
+            /** Format: uuid */
+            courseId: string;
+            /** Format: int64 */
+            version: number | string;
+            components: components["schemas"]["PointComponentDto"][];
+        };
         CreateRequest: {
             /** Format: uuid */
             operationId: string;
@@ -1770,6 +1990,25 @@ export interface components {
             /** Format: int32 */
             floor: number | string;
         };
+        PointComponentDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: string;
+            /** Format: double */
+            maximum: number | string;
+            isAttendance: boolean;
+        };
+        PointComponentInput: {
+            /** Format: uuid */
+            id: null | string;
+            name: string;
+            kind: string;
+            /** Format: double */
+            maximum: number | string;
+            /** @default false */
+            isAttendance: boolean;
+        };
         PreviousDto: {
             /** Format: date-time */
             startsAt: string;
@@ -1787,6 +2026,14 @@ export interface components {
             universityId: string;
             university: string;
             group: string;
+            faculty: null | string;
+            program: null | string;
+            /** Format: int32 */
+            courseNumber: null | number | string;
+            /** Format: int32 */
+            semesterNumber: null | number | string;
+            /** Format: int32 */
+            studyDurationYears: null | number | string;
         };
         PublishAnnouncement: {
             /** Format: uuid */
@@ -1830,6 +2077,17 @@ export interface components {
             /** Format: int64 */
             version: number | string;
             rows: components["schemas"]["JournalRowInput"][];
+        };
+        SavePointPlanRequest: {
+            /** Format: int64 */
+            version: number | string;
+            components: components["schemas"]["PointComponentInput"][];
+        };
+        SavePointScoreRequest: {
+            /** Format: double */
+            points: null | number | string;
+            /** Format: int64 */
+            version: number | string;
         };
         SaveResultRequest: {
             kind: components["schemas"]["FinalKind"];
@@ -1899,6 +2157,37 @@ export interface components {
             id: string;
             name: string;
             actions: components["schemas"]["PermissionCode"][];
+        };
+        StudentPointComponentDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: string;
+            /** Format: double */
+            maximum: number | string;
+            /** Format: double */
+            points: null | number | string;
+            incomplete: boolean;
+        };
+        StudentPointScoreDto: {
+            /** Format: uuid */
+            componentId: string;
+            /** Format: double */
+            points: null | number | string;
+            /** Format: int64 */
+            version: number | string;
+        };
+        StudentPointsDto: {
+            /** Format: uuid */
+            courseId: string;
+            /** Format: int64 */
+            planVersion: number | string;
+            components: components["schemas"]["StudentPointComponentDto"][];
+            /** Format: double */
+            earned: number | string;
+            /** Format: double */
+            maximum: number | string;
+            attendanceIncomplete: boolean;
         };
         TeacherContextDto: {
             teacherId: string;

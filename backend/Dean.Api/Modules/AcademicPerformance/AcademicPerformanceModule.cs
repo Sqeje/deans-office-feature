@@ -22,6 +22,7 @@ public sealed class AcademicPerformanceModule : IAppModule
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        PointEndpoints.Map(endpoints);
         JournalEndpoints.Map(endpoints);
         var api = endpoints.MapGroup("/api/academic-performance").WithTags("AcademicPerformance");
         api.MapGet("/semesters", async (ICurrentActor current, AppDbContext db, HttpContext ctx, CancellationToken ct) =>

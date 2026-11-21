@@ -19,6 +19,7 @@ internal sealed class ScheduleJournalLessons(AppDbContext db) : IScheduleJournal
         from lesson in db.Set<ScheduleEntry>().AsNoTracking()
         join course in db.Set<AcademicCourse>().AsNoTracking() on lesson.CourseId equals course.Id
         where lesson.UniversityId == universityId && course.UniversityId == universityId && lesson.GroupId == course.GroupId
+            && lesson.Category == EventCategory.Lesson
             && (lessonId == null || lesson.Id == lessonId) && (courseId == null || course.Id == courseId)
         orderby lesson.StartsAt, lesson.Id
         select new JournalLessonDto(lesson.Id, course.Id, lesson.GroupId, course.SemesterId, lesson.StartsAt,

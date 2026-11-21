@@ -43,6 +43,16 @@ public sealed class WorkplaceSeedIntegrationTests
                 Assert.Equal(30, students.Length);
                 var linked = await db.Set<ScheduleEntry>().Where(x => x.CourseId != null).Select(x => x.CourseId!.Value).Distinct().ToArrayAsync();
                 Assert.Equal(9, linked.Length);
+                var scheduledAssessments = await db.Set<ScheduleEntry>().Where(x => x.CourseId != null && linked.Contains(x.CourseId.Value) && x.Category == EventCategory.Assessment).ToArrayAsync();
+                Assert.Equal(9, scheduledAssessments.Length);
+                var legacyCourseIds = Enumerable.Range(1, 4).Select(n => Guid.Parse($"60000000-0000-0000-0000-{n:D12}")).ToArray();
+                Assert.All(await db.Set<AcademicCourse>().Where(x => x.SemesterId == "2026-autumn" && legacyCourseIds.Contains(x.Id)).ToArrayAsync(), x => Assert.True(x.IsArchived));
+                foreach (var assessment in scheduledAssessments)
+                {
+                    var course = await db.Set<AcademicCourse>().SingleAsync(x => x.Id == assessment.CourseId);
+                    Assert.Equal(course.AssessmentDate, DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(assessment.StartsAt, ScheduleEndpoints.Moscow).DateTime));
+                    Assert.Equal(course.Name, assessment.Title);
+                }
                 var schedule = scope.ServiceProvider.GetRequiredService<IScheduleJournalLessons>();
                 foreach (var course in linked) Assert.Equal(20, (await schedule.List(ScheduleDemo.University, course, default)).Length);
                 foreach (var student in students)
