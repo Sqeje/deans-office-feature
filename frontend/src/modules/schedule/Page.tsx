@@ -47,11 +47,11 @@ export function Page() {
 
   const { staff } = useSchedulePaths();
   const { session } = useSession();
-  const teacher = !!session?.roles.includes("Teacher") && !!session.permissions.some(p => p.permission === "schedule.write");
+  const teacher = !!session?.roles.includes("Teacher") && !session.roles.includes("Dean") && !!session.permissions.some(p => p.permission === "schedule.write");
 
 
   return <section className="schedule-page">
-    <ScheduleTabs />
+    {!(staff && !teacher) && <ScheduleTabs />}
 
     <Routes>
       <Route index element={staff ? teacher ? <TeacherPersonalPage /> : <Navigate to="catalog" replace /> : <PersonalPage />} />

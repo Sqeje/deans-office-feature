@@ -5,7 +5,7 @@ import { ApiError } from "../../shared/api";
 import { loadPointPlan, loadStaffPointScores, savePointPlan, savePointScore, type PointPlan } from "./api";
 import { RequestFailure, useRemote } from "./remote";
 
-export function PointsEditor({ studentId, courseId }: { studentId: string; courseId: string }) {
+export function PointsEditor({ studentId, courseId, hideDeniedForDean }: { studentId: string; courseId: string; hideDeniedForDean: boolean }) {
   const loadPlan = useCallback((signal: AbortSignal) => loadPointPlan(courseId, signal), [courseId]);
   const plan = useRemote(courseId, loadPlan);
   const loadScores = useCallback((signal: AbortSignal) => loadStaffPointScores(studentId, courseId, signal), [studentId, courseId]);
@@ -14,7 +14,7 @@ export function PointsEditor({ studentId, courseId }: { studentId: string; cours
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const value = draft ?? plan.data;
-  if (plan.error) return <RequestFailure error={plan.error} retry={plan.retry} title="Не удалось загрузить балльный план" />;
+  if (plan.error) return <RequestFailure error={plan.error} retry={plan.retry} title="Не удалось загрузить балльный план" hideDeniedForDean={hideDeniedForDean} />;
   if (!value || scores.data === undefined) return <Skeleton />;
   const components = value.components.length ? value.components : [
     { id: "", name: "Контрольная работа 1", kind: "assessment", maximum: 20, isAttendance: false },

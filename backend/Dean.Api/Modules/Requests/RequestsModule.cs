@@ -61,7 +61,9 @@ public sealed class RequestsModule : IAppModule
         staff.MapGet("", async (Guid groupId, ICurrentActor current, AccessGuard guard, AppDbContext db, CancellationToken ct) => {
             var actor = (await current.Get(ct))!;
             await guard.Require(Permissions.RequestsManage, actor.UniversityId, groupId, ct);
-            var rows = await Query(db, actor).AsNoTracking().Where(x => x.GroupId == groupId).OrderByDescending(x => x.Number).ToArrayAsync(ct);
+            var rows = await Query(db, actor).AsNoTracking().Where(x => x.GroupId == groupId)
+                .OrderBy(x => x.Status == "rejected" || x.Status == "completed" ? 1 : 0)
+                .ThenBy(x => x.SubmittedAt).ThenBy(x => x.Number).ToArrayAsync(ct);
             return rows.Select(x => Dto(x)).ToArray();
         }).Produces<RequestDto[]>();
         staff.MapGet("/{id:guid}", async (Guid id, ICurrentActor current, AccessGuard guard, IStudentDirectory directory, AppDbContext db, HttpContext ctx, CancellationToken ct) => {

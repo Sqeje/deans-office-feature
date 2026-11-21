@@ -112,6 +112,7 @@ public static class DemoSeed
         await scope.ServiceProvider.GetRequiredService<WorkplaceDemo>().Initialize();
         await StaffDemoSeed.Run(db, users, passwords[2]!, universityId);
         await StaffDemoSeed.UpgradeKnownAccounts(db, users, universityId);
+        await StaffDemoSeed.UpgradeDeanGroupAccess(db, users, universityId);
         await scope.ServiceProvider.GetRequiredService<Dean.Api.Modules.AcademicPerformance.WorkplaceAcademicDemoSeed>().Initialize();
         var personalizedRequests = config.GetValue<bool>("Demo:Requests");
         var personalizedStudent = personalizedRequests ? (await users.FindByEmailAsync("student1@demo.invalid"))!.Id : null;
