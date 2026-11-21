@@ -92,7 +92,17 @@ public sealed class AcademicPerformanceModule : IAppModule
             if (course is null) return KernelHttp.Problem(ctx,404,"course_not_found");
             await guard.Require(Permissions.GradesRead,actor.UniversityId,course.GroupId,ct);
             var result = await db.Set<AcademicResult>().AsNoTracking().SingleOrDefaultAsync(x => x.UniversityId == actor.UniversityId && x.CourseId == courseId && x.StudentId == studentId,ct);
-            return Results.Ok(result is null ? Array.Empty<FinalResultHistory>() : await db.Set<FinalResultHistory>().AsNoTracking().Where(x => x.UniversityId == actor.UniversityId && x.ResultId == result.Id).OrderByDescending(x => x.Version).ToArrayAsync(ct));
+            if (result is null) return Results.Ok(Array.Empty<FinalResultHistory>());
+            var history = await db.Set<FinalResultHistory>().AsNoTracking()
+                .Where(x => x.UniversityId == actor.UniversityId && x.ResultId == result.Id)
+                .OrderByDescending(x => x.Version).ToArrayAsync(ct);
+            var actorIds = history.Select(x => x.ActorId).Distinct().ToArray();
+            var staffNames = await db.Users.AsNoTracking()
+                .Where(x => x.UniversityId == actor.UniversityId && actorIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.DisplayName, ct);
+            foreach (var entry in history)
+                entry.ActorId = staffNames.GetValueOrDefault(entry.ActorId, "Сотрудник");
+            return Results.Ok(history);
         }).RequireAuthorization(Permissions.GradesRead).Produces<FinalResultHistory[]>();
         staff.MapPut("/students/{studentId}/courses/{courseId:guid}/result", SaveResult)
             .Produces(204).Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);

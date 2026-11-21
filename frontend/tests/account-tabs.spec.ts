@@ -46,7 +46,7 @@ for (const broadcast of [true, false]) test(`switching accounts invalidates the 
   expect((await context.request.post("/api/identity/logout", { headers: { ...stale, "X-CSRF-TOKEN": csrf.token } })).status()).toBe(401);
   if (!broadcast) await first.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(first).toHaveURL(/\/login$/);
-  await expect(first.getByRole("status")).toContainText("Учётная запись в другой вкладке изменена");
+  await expect(first.getByText(/Учётная запись в другой вкладке изменена/)).toHaveCount(0);
   await expect(first.getByRole("form", { name: "Изменение занятия" })).toHaveCount(0);
   await first.reload();
   await expect(first.getByRole("heading", { name: "Вход в кабинет", exact: true })).toBeVisible();

@@ -17,10 +17,11 @@ for (const account of [
     await page.goto("/staff");
     await expect(page.getByRole("heading", { name: `Здравствуйте, ${account.id}` })).toBeVisible();
     await expect(page.getByRole("link", { name: "Заполнить журнал занятий", exact: true })).toHaveCount(teacher ? 1 : 0);
-    if (!teacher) await expect(page.getByText("Ваши роли: Сотрудник, Сотрудник деканата")).toBeVisible();
-    await page.getByRole("link", { name: "Проверить итоговые результаты", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Проверить итоговые результаты", exact: true })).toHaveCount(0);
+    if (!teacher) await expect(page.getByText("Ваши роли: Сотрудник деканата")).toBeVisible();
+    await page.getByRole("link", { name: "Успеваемость", exact: true }).click();
     await expect(page.getByLabel("Группа", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Журнал занятий", exact: true })).toHaveCount(teacher ? 1 : 0);
+    await expect(page.getByRole("link", { name: "Итоговые результаты", exact: true })).toHaveCount(0);
     if (!teacher) {
       await page.goto("/staff/academic-performance?view=journal&course=unassigned");
       await expect(page.getByLabel("Группа", { exact: true })).toBeVisible();
@@ -29,6 +30,11 @@ for (const account of [
     await page.goto("/staff/schedule/catalog");
     await expect(page.getByRole("heading", { name: "Все расписания", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Редактировать расписание", exact: true })).toHaveCount(teacher ? 1 : 0);
+    if (!teacher) {
+      await expect(page.getByRole("link", { name: "Расписания", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Подразделы расписания" })).toHaveCount(0);
+      await expect(page.getByRole("group", { name: "Подразделы расписания" })).toHaveCount(0);
+    }
     for (const width of [360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.screenshot({ path: testInfo.outputPath(`catalog-${width}.png`), fullPage: true });

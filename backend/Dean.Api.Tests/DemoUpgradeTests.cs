@@ -56,12 +56,17 @@ public sealed class DemoUpgradeTests
                 Assert.False(await db.StaffGrants.AnyAsync(x => x.UserId == teacher.Id &&
                     (x.Permission == Permissions.RequestsManage || x.Permission == Permissions.AnnouncementsPublish || x.Permission == Permissions.SourcesManage)));
                 Assert.True(await db.StaffGrants.AnyAsync(x => x.UserId == teacher.Id && x.Permission == Permissions.ScheduleWrite));
-                Assert.False(await db.StaffGrants.AnyAsync(x => x.Permission == Permissions.GradesCorrect));
+                Assert.False(await db.StaffGrants.AnyAsync(x => x.UserId == teacher.Id && x.Permission == Permissions.GradesCorrect));
+                var groups = await db.StudyGroups.Where(x => x.UniversityId == teacher.UniversityId).Select(x => x.Id).ToArrayAsync();
                 foreach (var email in new[] { "staff@demo.invalid", "teacher2@demo.invalid", "teacher3@demo.invalid", "dean1@demo.invalid", "dean2@demo.invalid" })
                 {
                     var account = (await users.FindByEmailAsync(email))!;
                     Assert.True(await users.IsInRoleAsync(account, "Staff"));
                     Assert.True(await users.IsInRoleAsync(account, email.StartsWith("dean") ? "Dean" : "Teacher"));
+                    if (email.StartsWith("dean"))
+                        foreach (var groupId in groups)
+                            Assert.True(await db.StaffGrants.AnyAsync(x => x.UserId == account.Id && x.GroupId == groupId &&
+                                x.Permission == Permissions.GradesCorrect));
                 }
                 Assert.True((await users.RemoveFromRoleAsync(teacher, "Teacher")).Succeeded);
                 db.StaffGrants.RemoveRange(await db.StaffGrants.Where(x => x.UserId == teacher.Id && x.Permission == Permissions.ScheduleWrite).ToArrayAsync());

@@ -87,8 +87,7 @@ export function Login() {
         <form ref={form} onSubmit={submit} noValidate aria-busy={busy}>
           <h1>{roleLabel ? `Вход для ${roleLabel}` : "Вход в кабинет"}</h1>
           {roleLabel && <p className="muted">Войдите под своей учётной записью. Доступные разделы определяются правами аккаунта.</p>}
-          {accountChanged ? <p role="status">Учётная запись в другой вкладке изменена или выполнен выход. Войдите снова.</p>
-            : expired && <p role="status">Сеанс завершён. Войдите снова</p>}
+          {expired && <p role="status">Сеанс завершён. Войдите снова</p>}
           <div className="field">
             <label htmlFor="username">Логин</label>
             <p id="username-hint" className="muted">

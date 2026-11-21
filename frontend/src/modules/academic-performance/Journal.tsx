@@ -7,6 +7,7 @@ import { SelectField } from "../../components/ui/primitives";
 import { loadStaffContext } from "../identity/staffContext";
 import { loadJournal, saveJournal } from "./api";
 import { useRemote, RequestFailure } from "./remote";
+import { formatSemesterLabel } from "./model";
 
 export function Journal() {
   const [query, setQuery] = useSearchParams();
@@ -20,7 +21,7 @@ export function Journal() {
   return <>
     <p className="muted">Текущие оценки и посещаемость сохраняются отдельно от итоговой аттестации.</p>
     {context.error ? <RequestFailure error={context.error} retry={context.retry} /> : !context.data ? <p role="status">Загружаем назначения…</p> : !context.data.assignments.length ? <p>Учебных назначений пока нет.</p> : <SelectField id="journal-course" label="Группа и дисциплина" value={courseId} onChange={e => { setQuery({ view: "journal", course: e.target.value }); }}>
-      <option value="">Выберите назначение</option>{context.data.assignments.map(a => <option value={a.courseId} key={a.id}>{context.data?.groups.find(g => g.id === a.groupId)?.name} · {a.courseName} · {a.semesterId}</option>)}
+      <option value="">Выберите назначение</option>{context.data.assignments.map(a => <option value={a.courseId} key={a.id}>{context.data?.groups.find(g => g.id === a.groupId)?.name} · {a.courseName} · {formatSemesterLabel(a.semesterId)}</option>)}
     </SelectField>}
     {courseId && assigned && (journal.error ? <RequestFailure error={journal.error} retry={journal.retry} /> : !journal.data ? <p role="status">Загружаем журнал…</p> : <>
       <SelectField id="journal-lesson" label="Занятие" value={lessonId} onChange={e => setQuery({ view: "journal", course: courseId, lesson: e.target.value })}><option value="">Выберите занятие</option>{journal.data.lessons.map(l => <option key={l.lessonId} value={l.lessonId}>{new Date(l.startsAt).toLocaleString("ru-RU")} · {l.subject}{l.isCancelled ? " · Отменено" : ""}</option>)}</SelectField>

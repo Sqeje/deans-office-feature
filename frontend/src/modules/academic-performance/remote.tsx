@@ -41,14 +41,17 @@ export function RequestFailure({
   error,
   retry,
   title = "Не удалось загрузить успеваемость",
+  hideDeniedForDean = false,
 }: {
   error: unknown;
   retry: () => void;
   title?: string;
+  hideDeniedForDean?: boolean;
 }) {
   if (error instanceof ApiError && error.status === 401)
     return <Navigate to="/login?expired=1" replace />;
   const denied = error instanceof ApiError && error.status === 403;
+  if (denied && hideDeniedForDean) return null;
   return (
     <section className="academic-panel" role="alert">
       <h2>{denied ? "Нет доступа" : title}</h2>

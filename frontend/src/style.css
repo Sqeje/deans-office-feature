@@ -716,12 +716,6 @@ h1:focus {
     padding: 24px 16px;
     align-self: start;
   }
-  .student-shell .cabinet-brand .brand {
-    gap: 0;
-  }
-  .student-shell .cabinet-brand .brand-mark {
-    display: none;
-  }
   .student-shell .cabinet-brand p {
     font-size: 12px;
     line-height: 20px;

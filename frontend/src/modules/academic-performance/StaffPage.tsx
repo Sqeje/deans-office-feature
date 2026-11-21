@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useSession } from "../../shared/session";
 import { Journal } from "./Journal";
 import { PointsEditor } from "./PointsEditor";
@@ -26,8 +26,8 @@ export function StaffPage() {
   const { session } = useSession();
   const context = useRemote("staff-context", loadStaffContext);
   const canJournal = !!context.data?.roles.includes("Teacher") && !!context.data.assignments.length && !!session?.permissions.some(p => p.permission === "journal.write");
-  const journal = canJournal && query.get("view") !== "finals";
-  return <div className="performance-staff"><h1>Успеваемость</h1><nav className="staff-links" aria-label="Разделы успеваемости">{canJournal && <Link to="?view=journal" aria-current={journal ? "page" : undefined}>Журнал занятий</Link>}<Link to="?view=finals" aria-current={!journal ? "page" : undefined}>Итоговые результаты</Link></nav>{context.error ? <RequestFailure error={context.error} retry={context.retry} /> : !context.data ? <Skeleton /> : journal ? <Journal /> : <FinalsPage />}</div>;
+  const journal = canJournal && query.get("view") === "journal";
+  return <div className="performance-staff"><h1>Успеваемость</h1>{context.error ? <RequestFailure error={context.error} retry={context.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} /> : !context.data ? <Skeleton /> : journal ? <Journal /> : <FinalsPage />}</div>;
 }
 function FinalsPage() {
   const { session } = useSession();
@@ -89,9 +89,10 @@ function FinalsPage() {
           error={groups.error}
           retry={groups.retry}
           title="Не удалось загрузить группы"
+          hideDeniedForDean={!!session?.roles.includes("Dean")}
         />
       ) : catalog.error ? (
-        <RequestFailure error={catalog.error} retry={catalog.retry} />
+        <RequestFailure error={catalog.error} retry={catalog.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} />
       ) : !groups.data || !catalog.data ? (
         <Skeleton />
       ) : !groups.data.length ? (
@@ -148,6 +149,7 @@ function FinalsPage() {
                   error={roster.error}
                   retry={roster.retry}
                   title="Не удалось загрузить студентов"
+                  hideDeniedForDean={!!session?.roles.includes("Dean")}
                 />
               ) : !roster.data ? (
                 <Skeleton />
@@ -177,6 +179,7 @@ function FinalsPage() {
                 <RequestFailure
                   error={performance.error}
                   retry={performance.retry}
+                  hideDeniedForDean={!!session?.roles.includes("Dean")}
                 />
               ) : !performance.data ? (
                 <Skeleton />
@@ -210,7 +213,7 @@ function FinalsPage() {
           )}
           {saveError instanceof ApiError &&
           (saveError.status === 401 || saveError.status === 403) ? (
-            <RequestFailure error={saveError} retry={performance.retry} />
+            <RequestFailure error={saveError} retry={performance.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} />
           ) : null}
           {saveError instanceof ApiError && saveError.status === 409 && (
             <Button
@@ -234,8 +237,8 @@ function FinalsPage() {
               canCorrect={!!session?.permissions.some(p => (p.permission === "grades.correct" || (p.permission === "grades.write" && context.data?.assignments.some(a => a.courseId === discipline.id))) && (!p.groupId || p.groupId === groupId))}
             />
           )}
-          {discipline && student && <PointsEditor key={`points/${studentId}/${discipline.id}`} studentId={studentId} courseId={discipline.id} />}
-          {discipline && <History key={discipline.version} studentId={studentId} courseId={discipline.id} />}
+          {discipline && student && <PointsEditor key={`points/${studentId}/${discipline.id}`} studentId={studentId} courseId={discipline.id} hideDeniedForDean={!!session?.roles.includes("Dean")} />}
+          {discipline && <History key={discipline.version} studentId={studentId} courseId={discipline.id} hideDeniedForDean={!!session?.roles.includes("Dean")} />}
         </>
       )}
     </div>
@@ -337,8 +340,8 @@ function ResultEditor({
     </form>
   );
 }
-function History({ studentId, courseId }: { studentId: string; courseId: string }) {
+function History({ studentId, courseId, hideDeniedForDean }: { studentId: string; courseId: string; hideDeniedForDean: boolean }) {
   const load = useCallback((signal: AbortSignal) => loadHistory(studentId, courseId, signal), [studentId, courseId]);
   const history = useRemote(studentId + courseId, load);
-  return <section className="academic-panel"><h2>История итогового результата</h2>{history.error ? <RequestFailure error={history.error} retry={history.retry} /> : !history.data ? <p role="status">Загружаем историю…</p> : !history.data.length ? <p>Изменений пока нет.</p> : history.data.map(item => <div className="staff-assignment" key={item.id}><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("ru-RU") : "Дата не указана"} · Версия {item.version}</p><p>{item.previousValue ?? item.previousKind ?? "Не выставлен"} → {item.value ?? item.kind}</p><p>Сотрудник: {item.actorId}</p>{item.reason && <p>Причина: {item.reason}</p>}</div>)}</section>;
+  return <section className="academic-panel"><h2>История итогового результата</h2>{history.error ? <RequestFailure error={history.error} retry={history.retry} hideDeniedForDean={hideDeniedForDean} /> : !history.data ? <p role="status">Загружаем историю…</p> : !history.data.length ? <p>Изменений пока нет.</p> : history.data.map(item => <div className="staff-assignment" key={item.id}><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("ru-RU") : "Дата не указана"} · Версия {item.version}</p><p>{item.previousValue ?? item.previousKind ?? "Не выставлен"} → {item.value ?? item.kind}</p><p>Сотрудник: {item.actorId}</p>{item.reason && <p>Причина: {item.reason}</p>}</div>)}</section>;
 }

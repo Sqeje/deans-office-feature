@@ -10,6 +10,7 @@ public sealed class WorkplaceAcademicDemoSeed(AppDbContext db, TimeProvider cloc
 {
     public async Task Initialize(CancellationToken ct = default)
     {
+        await SeedStudentAcademicFields(ct);
         await SeedLegacyCatalog(ct);
         await SeedAssessmentCalendar(ct);
         const string version = "academic-points-v1";
@@ -66,6 +67,23 @@ public sealed class WorkplaceAcademicDemoSeed(AppDbContext db, TimeProvider cloc
             }
         }
         db.Add(new DemoUpgrade { UniversityId = university, Version = version, AppliedAt = now });
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+
+    private async Task SeedStudentAcademicFields(CancellationToken ct)
+    {
+        const string version = "demo-student-academic-fields-v1";
+        var university = ScheduleDemo.University;
+        if (await db.Set<DemoUpgrade>().AnyAsync(x => x.UniversityId == university && x.Version == version, ct)) return;
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var profiles = await db.StudentProfiles.Where(x => x.UniversityId == university).ToArrayAsync(ct);
+        foreach (var profile in profiles)
+        {
+            profile.Faculty ??= "Факультет информационных технологий";
+            profile.Program ??= "Прикладная информатика";
+        }
+        db.Add(new DemoUpgrade { UniversityId = university, Version = version, AppliedAt = clock.GetUtcNow() });
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
     }

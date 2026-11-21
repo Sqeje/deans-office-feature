@@ -24,7 +24,7 @@ test("staff dashboard shows named assignments and real next lesson",async ({page
   await page.goto("/staff");
   await expect(page.getByRole("heading",{name:"Ближайшее занятие"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Базы данных",exact:true})).toBeVisible();
-  await expect(page.getByRole("link",{name:"Базы данных · 2026-autumn"})).toHaveAttribute("href","/staff/academic-performance?view=journal&course=course");
+  await expect(page.getByRole("link",{name:"Базы данных · Осень 2026"})).toHaveAttribute("href","/staff/academic-performance?view=journal&course=course");
   for(const width of [360,1280]) {await page.setViewportSize({width,height:900});await page.screenshot({path:testInfo.outputPath("staff-dashboard-"+width+".png"),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();}
 });
 test("journal preserves draft on conflict and shows cancelled lesson read only", async ({ page }, testInfo) => {

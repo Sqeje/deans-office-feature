@@ -30,6 +30,11 @@ export interface Semester {
   id: string;
   label: string;
 }
+export function formatSemesterLabel(id: string): string {
+  const [year, term] = id.split("-");
+  const termLabel = term === "autumn" ? "Осень" : term === "spring" ? "Весна" : null;
+  return year && termLabel ? `${termLabel} ${year}` : id;
+}
 export interface PerformanceSummary {
   total: number;
   passed: number;

@@ -7,6 +7,7 @@ namespace Dean.Api.Modules.Identity;
 public static class StaffDemoSeed
 {
     public const string UpgradeVersion = "workplace-roles-v1";
+    public const string DeanGroupAccessUpgradeVersion = "dean-all-groups-and-grade-correction-v1";
 
     public static async Task UpgradeKnownAccounts(AppDbContext db, UserManager<ApplicationUser> users, Guid universityId)
     {
@@ -34,6 +35,24 @@ public static class StaffDemoSeed
                 await AddMissingGrants(db, user.Id, universityId, group, [Permissions.GradesRead, Permissions.RequestsManage]);
         }
         db.Add(new DemoUpgrade { UniversityId = universityId, Version = UpgradeVersion, AppliedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
+    public static async Task UpgradeDeanGroupAccess(AppDbContext db, UserManager<ApplicationUser> users, Guid universityId)
+    {
+        if (await db.Set<DemoUpgrade>().AnyAsync(x => x.UniversityId == universityId && x.Version == DeanGroupAccessUpgradeVersion)) return;
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var groups = await db.StudyGroups.Where(x => x.UniversityId == universityId).OrderBy(x => x.Id).Select(x => x.Id).ToArrayAsync();
+        var deans = await users.Users.Where(x => x.UniversityId == universityId).ToArrayAsync();
+        foreach (var dean in deans)
+        {
+            if (!await users.IsInRoleAsync(dean, "Dean")) continue;
+            foreach (var group in groups)
+                await AddMissingGrants(db, dean.Id, universityId, group,
+                    [Permissions.GradesRead, Permissions.GradesWrite, Permissions.GradesCorrect, Permissions.RequestsManage]);
+        }
+        db.Add(new DemoUpgrade { UniversityId = universityId, Version = DeanGroupAccessUpgradeVersion, AppliedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
     }
