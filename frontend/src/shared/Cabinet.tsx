@@ -117,7 +117,7 @@ function CabinetContent({ area }: { area: Area }) {
   return (
     <div
       className={
-        area === "student" ? "student-shell" : "mx-auto max-w-6xl p-4 sm:p-8"
+        area === "student" ? "student-shell" : "staff-shell mx-auto max-w-6xl p-4 sm:p-8"
       }
     >
       <a className="skip-link" href="#cabinet-main">
@@ -166,7 +166,7 @@ function CabinetContent({ area }: { area: Area }) {
         className={
           area === "student"
             ? "student-layout"
-            : "mt-6 grid gap-6 md:grid-cols-[210px_1fr]"
+            : "staff-layout mt-6 grid gap-6 lg:grid-cols-[210px_minmax(0,1fr)]"
         }
       >
         <nav aria-label="Разделы" className="cabinet-nav">
@@ -180,17 +180,20 @@ function CabinetContent({ area }: { area: Area }) {
               }
               const path = p.navigationPath ?? p.path;
               const Icon = icons[path] ?? FileText;
+              const journal = area === "staff" && path === "academic-performance" &&
+                session.roles.includes("Teacher") && !session.roles.includes("Dean") &&
+                session.permissions.some(grant => grant.permission === "journal.write");
               return (
                 <NavLink
                   end={p.path === ""}
                   key={p.path}
-                  to={"/" + area + (path ? "/" + path : "")}
+                  to={"/" + area + (path ? "/" + path : "") + (journal ? "?view=journal" : "")}
                   className={({ isActive }) =>
                     isActive ? "nav-link active" : "nav-link"
                   }
                 >
                   <Icon aria-hidden="true" />
-                  <span>{p.title}</span>
+                  <span>{journal ? "Журнал" : p.title}</span>
                   {area === "student" && p.path === "notifications" && <NotificationCount />}
                 </NavLink>
               );

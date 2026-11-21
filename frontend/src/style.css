@@ -476,10 +476,18 @@ h1:focus {
   .student-shell {
     padding: 24px 24px calc(96px + env(safe-area-inset-bottom));
   }
-  .student-layout {
+  .student-layout,
+  .staff-layout {
     display: block;
   }
-  .student-layout > .cabinet-nav {
+  .student-shell,
+  .staff-shell {
+    --cabinet-bottom-offset: calc(65px + env(safe-area-inset-bottom));
+  }
+  .staff-shell {
+    padding-bottom: calc(var(--cabinet-bottom-offset) + 16px);
+  }
+  :is(.student-layout, .staff-layout) > .cabinet-nav {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -488,19 +496,21 @@ h1:focus {
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
-    padding-bottom: env(safe-area-inset-bottom);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(max-content, 1fr);
+    gap: 4px;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
   }
-  .student-layout .nav-link {
+  :is(.student-layout, .staff-layout) > .cabinet-nav .nav-link {
     flex-direction: column;
     gap: 4px;
     font-size: 11px;
     line-height: 14px;
     padding: 8px 2px;
-    min-height: 64px;
+    min-height: 56px;
+    justify-content: center;
     text-align: center;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
   }
   .desktop-logout {
     display: none;

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "../../shared/session";
 import { Journal } from "./Journal";
 import { PointsEditor } from "./PointsEditor";
@@ -27,7 +27,7 @@ export function StaffPage() {
   const context = useRemote("staff-context", loadStaffContext);
   const canJournal = !!context.data?.roles.includes("Teacher") && !!context.data.assignments.length && !!session?.permissions.some(p => p.permission === "journal.write");
   const journal = canJournal && query.get("view") === "journal";
-  return <div className="performance-staff"><h1>Успеваемость</h1>{context.error ? <RequestFailure error={context.error} retry={context.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} /> : !context.data ? <Skeleton /> : journal ? <Journal /> : <FinalsPage />}</div>;
+  return <div className="performance-staff"><h1>Успеваемость</h1>{context.error ? <RequestFailure error={context.error} retry={context.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} /> : !context.data ? <Skeleton /> : journal ? <><Link to="?view=finals">К итоговым результатам</Link><Journal /></> : <FinalsPage />}</div>;
 }
 function FinalsPage() {
   const { session } = useSession();

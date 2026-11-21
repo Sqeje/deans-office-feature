@@ -240,6 +240,7 @@ declare global { interface Window { scheduleTest: { count(): number; reject(i: n
 
 test("source loading, failure, retry, empty assessment and stale week protection", async ({ page }) => {
   const host = await controlled(page);
+  await host.getByRole("button", { name: "Дополнительные действия", exact: true }).click();
   await expect(host.getByRole("status")).toHaveText("Загружаем расписание…");
   await expect(host.getByRole("button", { name: "Сохранить на устройство" })).toBeDisabled();
   await page.evaluate(() => window.scheduleTest.reject(0));
@@ -272,15 +273,28 @@ test("source loading, failure, retry, empty assessment and stale week protection
 
 for (const width of [360, 390, 768, 1024, 1280, 1440]) {
   test(`responsive catalog, full week, controls and screenshots ${width}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
     await openSchedule(page, "/student/schedule?view=week");
     await expect(page.locator(".schedule-row")).toHaveCount(18);
     await page.evaluate(() => document.fonts.ready);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const save = page.getByRole("button", { name: "Сохранить на устройство", exact: true });
+    const actions = page.getByRole("button", { name: "Дополнительные действия", exact: true });
+    if (width < 768) {
+      await expect(actions).toHaveAttribute("aria-expanded", "false");
+      await expect(save).toBeHidden();
+      const lesson = await page.locator(".schedule-row h3").first().boundingBox();
+      const mobileNav = await nav(page).boundingBox();
+      expect(lesson!.y + lesson!.height).toBeLessThan(mobileNav!.y);
+      await actions.click();
+      await expect(actions).toHaveAttribute("aria-expanded", "true");
+    } else {
+      await expect(actions).toBeHidden();
+    }
     const saveBox = await save.boundingBox(), headerBox = await page.locator(".schedule-view-header").boundingBox();
     expect(saveBox!.height).toBeGreaterThanOrEqual(44);
     expect(saveBox!.x + saveBox!.width).toBeCloseTo(headerBox!.x + headerBox!.width, 0);
+    if (width < 768) await actions.click();
     if (width < 1024) await expect(nav(page).getByRole("link")).toHaveCount(5);
     else {
       await page.getByRole("button", { name: "Подразделы расписания", exact: true }).click();

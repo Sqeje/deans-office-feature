@@ -1,4 +1,4 @@
-﻿import { test, expect } from "./test";
+import { test, expect } from "./test";
 for (const account of [
   { id: "teacher-it", role: "Teacher", group: "ИВТ-401" },
   { id: "teacher-economics", role: "Teacher", group: "ЭК-301" },
@@ -19,7 +19,8 @@ for (const account of [
     await expect(page.getByRole("link", { name: "Заполнить журнал занятий", exact: true })).toHaveCount(teacher ? 1 : 0);
     await expect(page.getByRole("link", { name: "Проверить итоговые результаты", exact: true })).toHaveCount(0);
     if (!teacher) await expect(page.getByText("Ваши роли: Сотрудник деканата")).toBeVisible();
-    await page.getByRole("link", { name: "Успеваемость", exact: true }).click();
+    await page.getByRole("link", { name: teacher ? "Журнал" : "Успеваемость", exact: true }).click();
+    if (teacher) await page.getByRole("link", { name: "К итоговым результатам", exact: true }).click();
     await expect(page.getByLabel("Группа", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Итоговые результаты", exact: true })).toHaveCount(0);
     if (!teacher) {
@@ -35,8 +36,10 @@ for (const account of [
       await expect(page.getByRole("button", { name: "Подразделы расписания" })).toHaveCount(0);
       await expect(page.getByRole("group", { name: "Подразделы расписания" })).toHaveCount(0);
     }
-    for (const width of [360, 1280]) {
+    for (const width of [360, 390, 768, 1024]) {
       await page.setViewportSize({ width, height: 900 });
+      const nav = page.getByRole("navigation", { name: "Разделы", exact: true });
+      await expect(nav).toHaveCSS("position", width < 1024 ? "fixed" : "static");
       await page.screenshot({ path: testInfo.outputPath(`catalog-${width}.png`), fullPage: true });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     }

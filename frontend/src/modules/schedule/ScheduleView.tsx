@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../../shared/api";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { WeekPicker } from "./WeekPicker";
 import { Button } from "../../components/ui/button";
 import { scheduleSource } from "./source";
@@ -18,6 +18,8 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   const [search, setSearch] = useSearchParams();
   const [now, setNow] = useState(getNow);
   const [attempt, setAttempt] = useState(0);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsId = useId();
   const [load, setLoad] = useState<Load>({ key: "", status: "loading" });
   const requestSequence = useRef(0);
   const getNowRef = useRef(getNow);
@@ -103,10 +105,16 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   return <>
     <div className="schedule-view-header">
       <div>{heading && <h1>{heading}</h1>}{description && <p className="muted">{description}</p>}</div>
-      <ExportButton key={`${key}/${mode}/${today}`} ready={state.status === "success"}
-        schedule={{ entity, events: visible, category, mode, now,
-          start: category === "lesson" && mode === "today" ? selectedDay : start,
-          end: category === "lesson" && mode === "today" ? selectedDay : end }} />
+      <div className="schedule-view-actions">
+        <Button type="button" variant="outline" className="schedule-actions-toggle" aria-expanded={actionsOpen} aria-controls={actionsId}
+          onClick={() => setActionsOpen(open => !open)}>Дополнительные действия <ChevronDown aria-hidden="true" /></Button>
+        <div id={actionsId} className="schedule-actions-panel" data-open={actionsOpen}>
+          <ExportButton key={`${key}/${mode}/${today}`} ready={state.status === "success"}
+            schedule={{ entity, events: visible, category, mode, now,
+              start: category === "lesson" && mode === "today" ? selectedDay : start,
+              end: category === "lesson" && mode === "today" ? selectedDay : end }} />
+        </div>
+      </div>
     </div>
     <div className="schedule-modes schedule-kind-modes" role="group" aria-label="Тип событий">
       <Button variant="outline" aria-pressed={category === "lesson"} onClick={() => update({ kind: "lessons" })}>Занятия</Button>
@@ -118,9 +126,13 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
         <Button variant="outline" aria-pressed={mode === "week"} onClick={() => update({ view: "week" })}>Неделя</Button>
       </div>
       {mode === "week" && <div className="schedule-week-controls" role="group" aria-label="Навигация по неделям">
-        <Button variant="outline" onClick={() => update({ week: addDays(monday, -7) })}>‹ Предыдущая неделя</Button>
+        <Button variant="outline" aria-label="Предыдущая неделя" onClick={() => update({ week: addDays(monday, -7) })}>
+          <span>‹ Предыдущая неделя</span><ChevronLeft aria-hidden="true" />
+        </Button>
         <WeekPicker selected={monday} today={today} onSelect={week => update({ week })} />
-        <Button variant="outline" onClick={() => update({ week: addDays(monday, 7) })}>Следующая неделя ›</Button>
+        <Button variant="outline" aria-label="Следующая неделя" onClick={() => update({ week: addDays(monday, 7) })}>
+          <span>Следующая неделя ›</span><ChevronRight aria-hidden="true" />
+        </Button>
       </div>}
     </> : <p className="schedule-semester muted">Текущий семестр: {date(semester.start)} – {date(semester.end)} Включая прошедшие события.</p>}
     <p className="schedule-zone muted">Московское время · UTC+3</p>

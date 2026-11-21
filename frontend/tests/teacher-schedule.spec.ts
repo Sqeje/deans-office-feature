@@ -33,6 +33,7 @@ for (const width of [360, 1280]) test(`teacher own schedule, shared catalog, res
   for (const groupName of new Set<string>(events.events.map((e: any) => e.groupName))) {
     await expect(page.getByText(`Группа ${groupName}`, { exact: true })).toHaveCount(events.events.filter((e: any) => e.groupName === groupName).length);
   }
+  if (width < 768) await page.getByRole("button", { name: "Дополнительные действия", exact: true }).click();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Сохранить на устройство", exact: true }).click();
   const file = await pending;

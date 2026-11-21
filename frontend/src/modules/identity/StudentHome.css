@@ -1,0 +1,27 @@
+.student-shell .home-grid .lesson-card {
+  padding-right: 80px;
+}
+
+@media (max-width: 767px) {
+  .student-shell .home-grid .lesson-card {
+    padding-right: 20px;
+  }
+
+  .lesson-card .summary-heading {
+    min-height: 44px;
+    padding-right: 56px;
+  }
+
+  .home-grid .lesson-card .summary-action {
+    top: 20px;
+    transform: none;
+  }
+
+  .lesson-title time {
+    display: block;
+  }
+
+  .lesson-title-separator {
+    display: none;
+  }
+}

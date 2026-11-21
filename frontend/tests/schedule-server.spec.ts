@@ -60,6 +60,7 @@ for (const width of [360, 1280]) test(`server schedule, staff edit, home, second
     await expect(student.locator(`#lesson-${original.id}`)).toContainText(`Ауд. тест ${width}`);
     await student.reload();
     await expect(student.locator(`#lesson-${original.id}`)).toContainText(original.teacher);
+    if (width < 768) await student.getByRole("button", { name: "Дополнительные действия", exact: true }).click();
     const pending = student.waitForEvent("download");
     await student.getByRole("button", { name: "Сохранить на устройство", exact: true }).click();
     const download = await pending;
@@ -98,6 +99,7 @@ test("personal API error never falls back to demo data; retry can load an empty 
   await expect(page.getByRole("alert")).toContainText("Не удалось загрузить расписание");
   await expect(page.getByRole("alert")).toContainText("schedule-test");
   await expect(page.locator(".schedule-row")).toHaveCount(0);
+  await page.getByRole("button", { name: "Дополнительные действия", exact: true }).click();
   await expect(page.getByRole("button", { name: "Сохранить на устройство" })).toBeDisabled();
   fail = false; await page.getByRole("button", { name: "Повторить", exact: true }).click();
   await expect(page.getByRole("heading", { name: "В этот день занятий нет" })).toBeVisible();

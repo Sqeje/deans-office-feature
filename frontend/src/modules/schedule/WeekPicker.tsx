@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { addDays, formatDay, weekOf } from "./model";
 const date = (day: string) => formatDay(day, { day: "numeric", month: "long", year: "numeric" });
+const numericDate = (day: string) => formatDay(day, { day: "2-digit", month: "2-digit", year: "numeric" });
 function shiftMonth(month: string, delta: number) {
   const value = new Date(`${month}-01T12:00:00Z`);
   value.setUTCMonth(value.getUTCMonth() + delta);
@@ -15,6 +16,7 @@ export function WeekPicker({ selected, today, onSelect }: { selected: string; to
   const id = useId();
   const first = `${month}-01`;
   const last = addDays(`${shiftMonth(month, 1)}-01`, -1);
+  const selectedEnd = addDays(selected, 6);
   const weeks: string[] = [];
   for (let day = weekOf(first)[0]; day <= last; day = addDays(day, 7)) weeks.push(day);
   useEffect(() => {
@@ -32,7 +34,9 @@ export function WeekPicker({ selected, today, onSelect }: { selected: string; to
   }}>
     <button type="button" className="schedule-week-trigger" aria-label="Выбрать неделю" aria-haspopup="dialog" aria-expanded={open} aria-controls={id} ref={trigger}
       onClick={() => { if (!open) setMonth(selected.slice(0, 7)); setOpen(value => !value); }}>
-      <CalendarDays aria-hidden="true" /><span>{date(selected)} – {date(addDays(selected, 6))}</span>
+      <CalendarDays aria-hidden="true" />
+      <span className="schedule-week-range">{date(selected)} – {date(selectedEnd)}</span>
+      <span className="schedule-week-range-compact">{numericDate(selected)} – {numericDate(selectedEnd)}</span>
     </button>
     {open && <div className="schedule-week-calendar" role="dialog" aria-modal="false" aria-label="Выбор недели" id={id} ref={dialog}>
       <div className="schedule-calendar-heading"><strong>Выбор недели</strong><button type="button" aria-label="Закрыть календарь" onClick={() => { setOpen(false); trigger.current?.focus(); }}><X aria-hidden="true" /></button></div>

@@ -11,6 +11,7 @@ import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
 import { useNextLesson } from "../schedule/NextLesson";
 import { loadPerformance, loadSemesters } from "../academic-performance/api";
 import { useRemote } from "../academic-performance/remote";
+import "./StudentHome.css";
 export type Block<T> =
   | { status: "loading" }
   | { status: "error"; retry: () => void }
@@ -113,8 +114,11 @@ export function HomeSummaries({
         >
           {(lesson) => (
             <>
+              {lesson.current && <p>Сейчас идёт</p>}
               <p className="lesson-title">
-                {lesson.current ? "Сейчас идёт" : "Ближайшее занятие"} · {time(lesson.startsAt)} · {lesson.title}
+                <time dateTime={lesson.startsAt}>{time(lesson.startsAt)}</time>
+                <span className="lesson-title-separator" aria-hidden="true"> · </span>
+                {lesson.title}
               </p>
               <p>{lesson.href ? `${date(lesson.startsAt)} · ` : ""}{lesson.room}</p>
             </>

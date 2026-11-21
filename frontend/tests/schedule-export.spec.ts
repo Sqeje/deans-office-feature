@@ -16,6 +16,9 @@ async function open(page: Page, path: string, time = instant) {
   // Freeze Date only: JSZip must retain its asynchronous scheduling timers.
   await page.clock.setFixedTime(new Date(time));
   await page.goto(path);
+  if (page.viewportSize()!.width < 768) {
+    await page.getByRole("button", { name: "Дополнительные действия", exact: true }).click();
+  }
   await expect(saveButton(page)).toBeEnabled();
 }
 async function download(page: Page, outputPath?: string) {
