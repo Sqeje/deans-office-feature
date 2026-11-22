@@ -100,7 +100,7 @@ test("overview, all results, filter, discipline, back, refresh and semester", as
   await expect(page.getByText("Практическая работа")).toBeVisible();
   await page.reload();
   await expect(page.getByText("Елена Орлова")).toBeVisible();
-  await page.getByRole("link", { name: "Вернуться к успеваемости" }).click();
+  await page.locator(".academic-breadcrumb").getByRole("link", { name: "Успеваемость", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Успеваемость", exact: true }),
   ).toBeVisible();

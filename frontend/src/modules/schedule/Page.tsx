@@ -1,6 +1,9 @@
 import { useSession } from "../../shared/session";
-import { Navigate, Route, Routes, Link, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Breadcrumbs, CatalogPage, NotFound } from "./CatalogPage";
+import { ErrorPanel } from "../../shared/states";
+import { PageHeader } from "../../components/ui/primitives";
+import { ApiError } from "../../shared/api";
 import { useServerCatalog, catalogSource, publicCatalogSource } from "./serverCatalog";
 import { ScheduleView } from "./ScheduleView";
 import { ScheduleTabs } from "./Navigation";
@@ -14,8 +17,9 @@ export function GroupPage() {
   const { catalog, publicSchedule } = useSchedulePaths();
   const { groupId } = useParams();
   const id = groupId;
-  const { data, error } = useServerCatalog();
-  if (error) return <p role="alert">Не удалось загрузить каталог.</p>;
+  const { data, error, retry } = useServerCatalog();
+  if (error instanceof ApiError && error.status === 401 && !publicSchedule) return <Navigate to="/login?expired=1" replace />;
+  if (error) return <><PageHeader title="Расписание группы"/><ErrorPanel title="Не удалось загрузить каталог" message="Проверьте соединение и повторите попытку." traceId={error instanceof ApiError ? error.traceId : undefined} onRetry={retry}/></>;
   if (!data) return <p role="status">Загрузка…</p>;
   const group = data.groups.find(g => g.id === id);
   if (!group) return <NotFound />;
@@ -29,16 +33,14 @@ export function GroupPage() {
 export function TeacherPage() {
   const { catalog: catalogPath, publicSchedule } = useSchedulePaths();
   const { teacherId } = useParams();
-  const [search] = useSearchParams();
-  const { data, error } = useServerCatalog();
-  if (error) return <p role="alert">Не удалось загрузить каталог.</p>;
+  const { data, error, retry } = useServerCatalog();
+  if (error instanceof ApiError && error.status === 401 && !publicSchedule) return <Navigate to="/login?expired=1" replace />;
+  if (error) return <><PageHeader title="Расписание преподавателя"/><ErrorPanel title="Не удалось загрузить каталог" message="Проверьте соединение и повторите попытку." traceId={error instanceof ApiError ? error.traceId : undefined} onRetry={retry}/></>;
   if (!data) return <p role="status">Загрузка…</p>;
   const teacher = data.teachers.find(t => t.id === teacherId);
   if (!teacher) return <NotFound />;
-  const back = `${catalogPath}?${new URLSearchParams({ q: search.get("q") ?? teacher.name }).toString()}`;
   return <>
-    <Breadcrumbs items={[{ title: "Все расписания", to: catalogPath }, { title: "Преподаватели", to: back }, { title: teacher.name }]} />
-    <Link className="schedule-back" to={back}>← К поиску преподавателя</Link>
+    <Breadcrumbs items={[{ title: "Все расписания", to: catalogPath }, { title: teacher.name }]} />
     <ScheduleView source={publicSchedule ? publicCatalogSource : catalogSource} entity={{ kind: "teacher", id: teacher.id, name: teacher.name, serverBacked: true }}
       heading={teacher.name} description="Расписание преподавателя" />
   </>;

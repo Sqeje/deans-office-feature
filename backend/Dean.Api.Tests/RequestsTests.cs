@@ -18,12 +18,45 @@ using Xunit;
 public sealed class RequestsTests
 {
     [Fact]
+    public async Task StaffSummaryDropsToZeroAfterEveryRequestIsProcessed()
+    {
+        await using var env = await TestApp.Create();
+        using var student = await env.Login("student1@demo.invalid", env.Password1);
+        using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
+        using (var scope = env.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Set<RequestHistory>().ExecuteDeleteAsync();
+            await db.Set<StudentRequest>().ExecuteDeleteAsync();
+        }
+
+        async Task<int> ActionRequiredCount() =>
+            (await staff.GetFromJsonAsync<StaffRequestSummaryDto>("/api/requests/staff/summary"))!.ActionRequiredCount;
+
+        Assert.Equal(0, await ActionRequiredCount());
+        await Csrf(student);
+        await Csrf(staff);
+        var created = await student.PostAsJsonAsync("/api/requests/student",
+            new CreateRequest(Guid.NewGuid(), new("certificate", "По месту требования", 1)));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var request = (await created.Content.ReadFromJsonAsync<RequestDto>())!;
+        var statusUrl = $"/api/requests/staff/{request.Id}/status";
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(statusUrl,
+            new ChangeStatus(RequestStatus.InReview, request.Version))).StatusCode);
+        Assert.Equal(1, await ActionRequiredCount());
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(statusUrl,
+            new ChangeStatus(RequestStatus.Rejected, request.Version + 1, "Документ не требуется"))).StatusCode);
+        Assert.Equal(0, await ActionRequiredCount());
+    }
+
+    [Fact]
     public async Task RequestPersistsAndStrictHistoryIsSharedWithStaff()
     {
         await using var env = await TestApp.Create();
         using var first = await env.Login("student1@demo.invalid", env.Password1);
         using var other = await env.Login("student2@demo.invalid", env.Password2);
         using var staff = await env.Login("dean1@demo.invalid", env.StaffPassword);
+        var initialActionCount = (await staff.GetFromJsonAsync<StaffRequestSummaryDto>("/api/requests/staff/summary"))!.ActionRequiredCount;
         var input = new { universityId = Guid.NewGuid(), studentId = "forged", operationId = Guid.NewGuid(), input = new { kind = "certificate", place = "По месту требования", copies = 2 } };
         Assert.Equal(HttpStatusCode.BadRequest, (await first.PostAsJsonAsync("/api/requests/student", input)).StatusCode);
         await Csrf(first);
@@ -31,6 +64,7 @@ public sealed class RequestsTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = (await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>())!;
         var id = created["id"]!.GetValue<string>();
+        Assert.Equal(initialActionCount + 1, (await staff.GetFromJsonAsync<StaffRequestSummaryDto>("/api/requests/staff/summary"))!.ActionRequiredCount);
         var repeat = await first.PostAsJsonAsync("/api/requests/student", input);
         Assert.Equal(id, (await repeat.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>())!["id"]!.GetValue<string>());
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/requests/student/" + id)).StatusCode);
@@ -40,9 +74,11 @@ public sealed class RequestsTests
         var url = "/api/requests/staff/" + id + "/status";
         Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync(url, new { status = "ready", version = 1 })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(url, new { status = "in_review", version = 1 })).StatusCode);
+        Assert.Equal(initialActionCount + 1, (await staff.GetFromJsonAsync<StaffRequestSummaryDto>("/api/requests/staff/summary"))!.ActionRequiredCount);
         Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync(url, new { status = "ready", version = 1 })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await staff.PostAsJsonAsync(url, new { status = "rejected", version = 2 })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync(url, new { status = "rejected", version = 2, rejectionReason = "Уточните место предъявления" })).StatusCode);
+        Assert.Equal(initialActionCount, (await staff.GetFromJsonAsync<StaffRequestSummaryDto>("/api/requests/staff/summary"))!.ActionRequiredCount);
         using var fresh = await env.Login("student1@demo.invalid", env.Password1);
         var detail = (await fresh.GetFromJsonAsync<System.Text.Json.Nodes.JsonObject>("/api/requests/student/" + id))!;
         Assert.Equal("rejected", detail["status"]!.GetValue<string>());
@@ -103,6 +139,7 @@ public sealed class RequestsTests
         }
         using var deniedStaff=await env.Login("denied@demo.invalid",deniedPassword);
         Assert.Equal(HttpStatusCode.Forbidden,(await deniedStaff.GetAsync("/api/requests/staff/groups")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,(await deniedStaff.GetAsync("/api/requests/staff/summary")).StatusCode);
         await Csrf(staff);
         Assert.Equal(HttpStatusCode.Forbidden,(await staff.GetAsync($"/api/requests/staff?groupId={group}")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,(await staff.GetAsync($"/api/requests/staff/{hidden}")).StatusCode);
@@ -112,6 +149,7 @@ public sealed class RequestsTests
         Assert.Equal(HttpStatusCode.NotFound,(await student.GetAsync($"/api/requests/student/{hidden}")).StatusCode);
         using(var scope=env.Factory.Services.CreateScope()){var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();Assert.Empty(await db.AuditEntries.ToArrayAsync()); db.StaffGrants.RemoveRange(db.StaffGrants.Where(g=>g.UserId==session.UserId && g.Permission==Permissions.RequestsManage));await db.SaveChangesAsync();}
         Assert.Equal(HttpStatusCode.Forbidden,(await staff.GetAsync("/api/requests/staff/groups")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,(await staff.GetAsync("/api/requests/staff/summary")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,(await staff.PostAsJsonAsync($"/api/requests/staff/{hidden}/status",new ChangeStatus(RequestStatus.InReview,1))).StatusCode);
     }
     [Fact]

@@ -10,6 +10,7 @@ import type {
 
 export type Group = components["schemas"]["DirectoryGroup"];
 export type Student = components["schemas"]["DirectoryStudent"];
+export type JournalCourse = components["schemas"]["JournalCourseDto"];
 export type ResultInput = components["schemas"]["SaveResultRequest"];
 export type StudentPoints = components["schemas"]["StudentPointsDto"];
 export type PointPlan = components["schemas"]["CoursePointPlanDto"];
@@ -59,6 +60,10 @@ function adapt(data: Performance): SemesterPerformance {
 }
 export async function loadJournal(courseId: string, signal: AbortSignal) {
   const { data, error, response } = await client.GET("/api/academic-performance/staff/courses/{courseId}/journal", { params: { path: { courseId } }, signal });
+  await check(response, error); return data!;
+}
+export async function loadJournalCourses(signal: AbortSignal): Promise<JournalCourse[]> {
+  const { data, error, response } = await client.GET("/api/academic-performance/staff/journal-courses", { signal });
   await check(response, error); return data!;
 }
 export async function saveJournal(lessonId: string, body: components["schemas"]["SaveJournalRequest"]) {

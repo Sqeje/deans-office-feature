@@ -94,7 +94,7 @@ function CabinetContent({ area }: { area: Area }) {
     };
   }, [open]);
   if (session === null) return <Navigate to="/login" replace />;
-  if (error) return <ErrorState />;
+  if (error) return <ErrorState title="Не удалось проверить сеанс" text="Проверьте соединение и повторите попытку." />;
   if (session === undefined) return <Loading />;
   if (!session.areas.includes(area))
     return (
@@ -114,10 +114,15 @@ function CabinetContent({ area }: { area: Area }) {
     .slice(0, 2)
     .map((v) => v[0])
     .join("");
+  const roleLabels: Record<string, string> = { Teacher: "Преподаватель", Dean: "Сотрудник деканата", Student: "Студент" };
+  const activeRole = area === "student" ? "Студент" : session.roles
+    .filter(role => role !== "Staff")
+    .map(role => roleLabels[role] ?? role)
+    .join(" · ") || "Сотрудник университета";
   return (
     <div
       className={
-        area === "student" ? "student-shell" : "staff-shell mx-auto max-w-6xl p-4 sm:p-8"
+        area === "student" ? "cabinet-shell student-shell" : "cabinet-shell staff-shell"
       }
     >
       <a className="skip-link" href="#cabinet-main">
@@ -142,6 +147,7 @@ function CabinetContent({ area }: { area: Area }) {
           {open && (
             <div id="profile-menu" ref={menu} className="profile-menu">
               <p>{session.displayName}</p>
+              <p className="profile-role">{activeRole}</p>
               {area === "student" && <Link to="/student/profile">Профиль</Link>}
               {session.areas
                 .filter((a) => a !== area)
@@ -166,7 +172,7 @@ function CabinetContent({ area }: { area: Area }) {
         className={
           area === "student"
             ? "student-layout"
-            : "staff-layout mt-6 grid gap-6 lg:grid-cols-[210px_minmax(0,1fr)]"
+            : "staff-layout"
         }
       >
         <nav aria-label="Разделы" className="cabinet-nav">
@@ -180,9 +186,11 @@ function CabinetContent({ area }: { area: Area }) {
               }
               const path = p.navigationPath ?? p.path;
               const Icon = icons[path] ?? FileText;
-              const journal = area === "staff" && path === "academic-performance" &&
+              const journal = area === "staff" && path === "academic-performance" && (
+                session.roles.includes("Dean") ||
                 session.roles.includes("Teacher") && !session.roles.includes("Dean") &&
-                session.permissions.some(grant => grant.permission === "journal.write");
+                  session.permissions.some(grant => grant.permission === "journal.write")
+              );
               return (
                 <NavLink
                   end={p.path === ""}

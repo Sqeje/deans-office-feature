@@ -10,6 +10,8 @@ using System.Globalization;
 
 namespace Dean.Api.Modules.Requests;
 
+public sealed record StaffRequestSummaryDto(int ActionRequiredCount);
+
 public sealed class RequestsModule : IAppModule
 {
     public string Id => "requests";
@@ -58,13 +60,27 @@ public sealed class RequestsModule : IAppModule
             var actor = (await current.Get(ct))!;
             return await directory.Groups(actor.UniversityId, actor.Grants.Where(g => actor.Can(Permissions.RequestsManage, actor.UniversityId, g.GroupId)).Select(g => g.GroupId!.Value).Distinct().ToArray(), ct);
         }).Produces<DirectoryGroup[]>();
-        staff.MapGet("", async (Guid groupId, ICurrentActor current, AccessGuard guard, AppDbContext db, CancellationToken ct) => {
+        staff.MapGet("/summary", async (ICurrentActor current, AccessGuard guard, AppDbContext db, CancellationToken ct) => {
+            var actor = (await current.Get(ct))!;
+            var groupIds = actor.Grants
+                .Where(g => g.GroupId is not null && actor.Can(Permissions.RequestsManage, actor.UniversityId, g.GroupId))
+                .Select(g => g.GroupId!.Value).Distinct().ToArray();
+            foreach (var groupId in groupIds)
+                await guard.Require(Permissions.RequestsManage, actor.UniversityId, groupId, ct);
+            var count = await db.Set<StudentRequest>().AsNoTracking()
+                .CountAsync(x => x.UniversityId == actor.UniversityId && groupIds.Contains(x.GroupId)
+                    && (x.Status == "submitted" || x.Status == "in_review"), ct);
+            return Results.Ok(new StaffRequestSummaryDto(count));
+        }).Produces<StaffRequestSummaryDto>();
+        staff.MapGet("", async (Guid groupId, ICurrentActor current, AccessGuard guard, IStudentDirectory directory, AppDbContext db, CancellationToken ct) => {
             var actor = (await current.Get(ct))!;
             await guard.Require(Permissions.RequestsManage, actor.UniversityId, groupId, ct);
             var rows = await Query(db, actor).AsNoTracking().Where(x => x.GroupId == groupId)
                 .OrderBy(x => x.Status == "rejected" || x.Status == "completed" ? 1 : 0)
                 .ThenBy(x => x.SubmittedAt).ThenBy(x => x.Number).ToArrayAsync(ct);
-            return rows.Select(x => Dto(x)).ToArray();
+            var students = await directory.Students(actor.UniversityId, groupId, ct);
+            var names = students.ToDictionary(x => x.Id, x => x.Name, StringComparer.Ordinal);
+            return rows.Select(x => Dto(x, names.GetValueOrDefault(x.StudentId))).ToArray();
         }).Produces<RequestDto[]>();
         staff.MapGet("/{id:guid}", async (Guid id, ICurrentActor current, AccessGuard guard, IStudentDirectory directory, AppDbContext db, HttpContext ctx, CancellationToken ct) => {
             var actor = (await current.Get(ct))!;

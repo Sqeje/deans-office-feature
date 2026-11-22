@@ -101,10 +101,30 @@ for (const width of [360, 390, 768, 1024, 1280, 1440])
       page.getByText("Демонстрационный университет · Факультет информационных технологий · Прикладная информатика · Группа ПИ-21", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("Демонстрационные данные — не связаны", { exact: false }),
-    ).toBeVisible();
+      page.getByText("Демонстрационные данные:", { exact: false }),
+    ).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Разделы", exact: true }).locator(".nav-link")).toHaveCount(5);
     await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator(".performance-home .performance-summary-values")).toBeVisible();
+    await expect(page.locator(".request-card .status-badge")).toBeVisible();
+    const cardLayout = await page.evaluate(() => {
+      const performance = document.querySelector(".performance-home")!;
+      const request = document.querySelector(".request-card")!;
+      const performanceBox = performance.getBoundingClientRect();
+      const requestBox = request.getBoundingClientRect();
+      return {
+        performance: { top: performanceBox.top, bottom: performanceBox.bottom, left: performanceBox.left },
+        request: { top: requestBox.top, bottom: requestBox.bottom, left: requestBox.left },
+        performancePadding: getComputedStyle(performance).padding,
+        requestPadding: getComputedStyle(request).padding,
+      };
+    });
+    if (width >= 768) {
+      expect(cardLayout.request.top).toBeCloseTo(cardLayout.performance.top, 0);
+      expect(cardLayout.request.bottom).toBeCloseTo(cardLayout.performance.bottom, 0);
+      expect(cardLayout.request.left).toBeGreaterThan(cardLayout.performance.left);
+      expect(cardLayout.requestPadding).toBe(cardLayout.performancePadding);
+    }
     expect(
       await page.evaluate(() =>
         document.fonts.check('16px "Inter Variable"', "Привет"),

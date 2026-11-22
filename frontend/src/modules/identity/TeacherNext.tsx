@@ -12,5 +12,5 @@ async function loadNext(signal: AbortSignal) {
 }
 export function TeacherNext() {
   const next = useRemote("teacher-next", loadNext);
-  return <section className="academic-panel staff-next"><h2>Ближайшее занятие</h2>{next.error ? <RequestFailure error={next.error} retry={next.retry} title="Не удалось загрузить занятие" /> : !next.data ? <p role="status">Загружаем расписание…</p> : next.data.event ? <><h3>{next.data.event.title}</h3><p>{next.data.event.groupName} · {new Date(next.data.event.startsAt).toLocaleString("ru-RU",{timeZone:next.data.timeZone})} · {next.data.event.room}</p><Link to="/staff/schedule">Открыть моё расписание</Link></> : <p>В ближайшие семь дней занятий нет.</p>}</section>;
+  return <section className="academic-panel staff-next"><h2>Ближайшее занятие</h2>{next.error ? <RequestFailure error={next.error} retry={next.retry} title="Не удалось загрузить занятие" /> : !next.data ? <p role="status">Загружаем расписание…</p> : next.data.event ? <><h3>{next.data.event.title}</h3><p>{next.data.event.groupName} · {new Intl.DateTimeFormat("ru-RU", { timeZone: next.data.timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(next.data.event.startsAt))} · {next.data.event.room}</p><Link to="/staff/schedule">Открыть моё расписание</Link></> : <p>В ближайшие семь дней занятий нет.</p>}</section>;
 }

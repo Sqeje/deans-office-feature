@@ -5,8 +5,8 @@ import { useSession } from '../../shared/session';
 import { requestDetailsUrl, requestStatuses, requestDate } from './model';
 import { errorText } from './api';
 import type { components } from '../../shared/schema';
-import { Button } from '../../components/ui/button';
 import { StatusBadge } from '../../components/ui/primitives';
+import { InlineError } from '../../shared/states';
 
 export function RequestSummary() {
   const { session } = useSession();
@@ -27,7 +27,7 @@ export function RequestSummary() {
     return <Navigate to="/login" state={{ expired: true }} replace />;
   return <section className="card request-card">
     <div className="summary-heading"><h2>Моя заявка</h2><Link to="/student/requests">Все заявки</Link></div>
-    {failure ? <div role="alert"><p>{errorText(failure)}</p><Button onClick={() => setAttempt(x => x + 1)}>Повторить</Button></div>
+    {failure ? <InlineError message={errorText(failure)} onRetry={() => setAttempt(x => x + 1)} />
       : row === undefined ? <p role="status">Загружаем заявку…</p>
       : row === null ? <p>Заявок пока нет. <Link to="/student/requests?view=create">Создать заявку</Link></p>
       : <><h3><Link to={requestDetailsUrl(row.id)}>{row.title}</Link></h3>

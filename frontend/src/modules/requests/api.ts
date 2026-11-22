@@ -9,6 +9,11 @@ export async function getDetail(id: string, staff = false) {
   const result = staff ? await client.GET('/api/requests/staff/{id}', { params: { path: { id } } }) : await client.GET('/api/requests/student/{id}', { params: { path: { id } } });
   await check(result.response, result.error); return adapt(result.data!);
 }
+export async function loadStaffActionRequiredCount(signal: AbortSignal) {
+  const result = await client.GET('/api/requests/staff/summary', { signal });
+  await check(result.response, result.error);
+  return Number(result.data!.actionRequiredCount);
+}
 export const liveSource: RequestSource = {
   async load() { const r = await client.GET('/api/requests/student'); await check(r.response, r.error); return r.data!.map(adapt); },
   async create(input, operationId) { const r = await client.POST('/api/requests/student', { body: { operationId: operationId!, input }, headers: await csrf() }); await check(r.response, r.error); return adapt(r.data!); }

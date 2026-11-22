@@ -8,7 +8,7 @@ export const notificationsModule: FrontendModule = {
     {
       area: "staff",
       path: "notifications",
-      title: "Уведомления",
+      title: "Объявления",
       Page: StaffPage,
       permission: "announcements.publish",
     },

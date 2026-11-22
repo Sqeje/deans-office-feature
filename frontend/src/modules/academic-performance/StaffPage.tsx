@@ -5,7 +5,7 @@ import { Journal } from "./Journal";
 import { PointsEditor } from "./PointsEditor";
 import { loadStaffContext } from "../identity/staffContext";
 import { Button } from "../../components/ui/button";
-import { SelectField, Skeleton } from "../../components/ui/primitives";
+import { PageHeader, SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
 import { ApiError } from "../../shared/api";
 import {
@@ -25,9 +25,24 @@ export function StaffPage() {
   const [query] = useSearchParams();
   const { session } = useSession();
   const context = useRemote("staff-context", loadStaffContext);
-  const canJournal = !!context.data?.roles.includes("Teacher") && !!context.data.assignments.length && !!session?.permissions.some(p => p.permission === "journal.write");
-  const journal = canJournal && query.get("view") === "journal";
-  return <div className="performance-staff"><h1>Успеваемость</h1>{context.error ? <RequestFailure error={context.error} retry={context.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} /> : !context.data ? <Skeleton /> : journal ? <><Link to="?view=finals">К итоговым результатам</Link><Journal /></> : <FinalsPage />}</div>;
+  const isDean = !!context.data?.roles.includes("Dean") || !!session?.roles.includes("Dean");
+  const teacherCanEditJournal = !!context.data?.roles.includes("Teacher") && !context.data.roles.includes("Dean")
+    && !!context.data.assignments.length && !!session?.permissions.some(p => p.permission === "journal.write");
+  const canJournal = isDean || teacherCanEditJournal;
+  const view = query.get("view");
+  const journal = canJournal && (view === "journal" || (view === null && isDean));
+  return <div className="performance-staff">
+    <PageHeader title={journal ? "Журнал" : "Успеваемость"} action={!journal && canJournal && <Button asChild variant="outline"><Link to="?view=journal">Открыть журнал занятий</Link></Button>} />
+    {context.error ? <RequestFailure error={context.error} retry={context.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} />
+      : !context.data ? <Skeleton />
+        : <>
+          {journal
+            ? <Journal />
+            : <>
+              <FinalsPage />
+            </>}
+        </>}
+  </div>;
 }
 function FinalsPage() {
   const { session } = useSession();
@@ -94,7 +109,7 @@ function FinalsPage() {
       ) : catalog.error ? (
         <RequestFailure error={catalog.error} retry={catalog.retry} hideDeniedForDean={!!session?.roles.includes("Dean")} />
       ) : !groups.data || !catalog.data ? (
-        <Skeleton />
+        <Skeleton label="Загружаем группы и семестры…" />
       ) : !groups.data.length ? (
         <EmptyState
           title="Группы пока не назначены"
@@ -152,7 +167,7 @@ function FinalsPage() {
                   hideDeniedForDean={!!session?.roles.includes("Dean")}
                 />
               ) : !roster.data ? (
-                <Skeleton />
+                <Skeleton label="Загружаем студентов…" />
               ) : !roster.data.length ? (
                 <p>В этой группе пока нет студентов.</p>
               ) : (
@@ -182,7 +197,7 @@ function FinalsPage() {
                   hideDeniedForDean={!!session?.roles.includes("Dean")}
                 />
               ) : !performance.data ? (
-                <Skeleton />
+                <Skeleton label="Загружаем успеваемость…" />
               ) : !performance.data.disciplines.length ? (
                 <p>В этом семестре у группы пока нет дисциплин.</p>
               ) : (

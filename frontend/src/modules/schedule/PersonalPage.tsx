@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { ApiError } from "../../shared/api";
 import { useSession } from "../../shared/session";
-import { Button } from "../../components/ui/button";
+import { PageHeader } from "../../components/ui/primitives";
+import { ErrorPanel } from "../../shared/states";
 import { ScheduleView } from "./ScheduleView";
 import { personalSource, scheduleApi, type ScheduleContext } from "./api";
 
@@ -19,11 +20,12 @@ export function PersonalPage() {
     return () => controller.abort();
   }, [session?.userId, attempt]);
   if (error instanceof ApiError && error.status === 401) return <Navigate to="/login" state={{ expired: true }} replace />;
-  if (!context) return <><h1>Моё расписание</h1>{error ? <div role="alert" className="card">
-    <p>{error instanceof ApiError && error.status === 403 ? "Нет доступа к расписанию учебной группы." : "Не удалось загрузить расписание."}</p>
-    {error instanceof ApiError && error.traceId && <p className="muted">Код обращения: {error.traceId}</p>}
-    <Button variant="outline" onClick={() => setAttempt(v => v + 1)}>Повторить</Button>
-  </div> : <p role="status">Загружаем расписание…</p>}</>;
+  if (!context) return <><PageHeader title="Моё расписание" />{error ? <ErrorPanel
+    title={error instanceof ApiError && error.status === 403 ? "Нет доступа к расписанию" : "Не удалось загрузить расписание"}
+    message={error instanceof ApiError && error.status === 403 ? "Обратитесь к сотруднику деканата." : "Проверьте соединение и повторите попытку."}
+    traceId={error instanceof ApiError ? error.traceId : undefined}
+    onRetry={() => setAttempt(v => v + 1)}
+  /> : <p role="status">Загружаем расписание…</p>}</>;
   return <>
     <aside className="demo-notice">{context.isDemo ? "Демонстрационное расписание — сохранено на сервере для вашего учебного профиля." : "Расписание вашей учебной группы. Данные с сервера."}</aside>
     <ScheduleView entity={{ kind: "group", id: context.groupId, name: context.groupName, personal: true, isDemo: context.isDemo }}

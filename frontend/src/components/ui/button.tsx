@@ -3,25 +3,43 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../shared/utils";
 const variants = cva(
-  "inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50",
+  "ui-button inline-flex items-center justify-center text-sm font-semibold",
   {
     variants: {
       variant: {
-        default: "ui-button ui-button-primary",
-        primary: "ui-button ui-button-primary",
-        outline: "ui-button ui-button-outline",
+        default: "ui-button-primary",
+        primary: "ui-button-primary",
+        secondary: "ui-button-secondary",
+        outline: "ui-button-outline",
+        ghost: "ui-button-ghost",
+        danger: "ui-button-danger",
+      },
+      size: {
+        default: "",
+        compact: "ui-button-compact",
+        icon: "ui-button-icon",
       },
     },
-    defaultVariants: { variant: "default" },
+    defaultVariants: { variant: "default", size: "default" },
   },
 );
 export function Button({
   className,
   variant,
+  size,
   asChild = false,
+  pending = false,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> &
-  VariantProps<typeof variants> & { asChild?: boolean }) {
+  VariantProps<typeof variants> & { asChild?: boolean; pending?: boolean }) {
   const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(variants({ variant }), className)} {...props} />;
+  return (
+    <Comp
+      className={cn(variants({ variant, size }), className)}
+      aria-busy={pending || undefined}
+      disabled={!asChild && (disabled || pending) ? true : undefined}
+      {...props}
+    />
+  );
 }

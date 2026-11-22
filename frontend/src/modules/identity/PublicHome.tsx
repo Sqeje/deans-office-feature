@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Brand, PrototypeNotice } from "../../shared/brand";
 import { Button } from "../../components/ui/button";
+import { PageHeader } from "../../components/ui/primitives";
 import "./PublicHome.css";
 
 export function PublicLayout({
@@ -112,8 +113,7 @@ export function PublicHome() {
 export function ContactsPage() {
   return <PublicLayout><main id="public-main" className="applicants-main">
     <Link to="/">На главную</Link>
-    <h1>Контакты и помощь</h1>
-    <p className="applicants-lead">Демонстрационные контакты прототипа. Они не связаны с реальной службой поддержки.</p>
+    <PageHeader title="Контакты и помощь" description="Демонстрационные контакты прототипа. Они не связаны с реальной службой поддержки." />
     <section className="public-information">
       <h2>Нет логина или пароля?</h2>
       <p>Для демонстрации используйте выданную тестовую учётную запись. Сброс пароля и отправка обращений в этом прототипе не подключены.</p>
@@ -131,10 +131,7 @@ export function ApplicantsPage() {
       <main id="public-main" className="applicants-main">
         <Link to="/">На главную</Link>
         <span className="applicants-soon">Скоро</span>
-        <h1>Будущим студентам</h1>
-        <p className="applicants-lead">
-          Информация о поступлении появится здесь позже.
-        </p>
+        <PageHeader title="Будущим студентам" description="Информация о поступлении появится здесь позже." />
         <section className="public-information">
           <h2>Раздел поступления пока недоступен</h2>
           <p>

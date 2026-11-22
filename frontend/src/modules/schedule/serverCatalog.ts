@@ -11,16 +11,17 @@ const publicOptions = { credentials: "omit", headers: { "X-Dean-Account": "" } }
 export function useServerCatalog() {
   const { publicSchedule } = useSchedulePaths();
   const [data, setData] = useState<ServerCatalog>();
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>();
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    setData(undefined); setError(false);
+    setData(undefined); setError(undefined);
     client.GET("/api/schedule/catalog", { signal: controller.signal, ...(publicSchedule ? publicOptions : {}) })
       .then(async result => { await check(result.response, result.error); if (!controller.signal.aborted) setData(result.data!); })
-      .catch(() => { if (!controller.signal.aborted) setError(true); });
+      .catch(cause => { if (!controller.signal.aborted) setError(cause); });
     return () => controller.abort();
-  }, [publicSchedule]);
-  return { data, error };
+  }, [publicSchedule, attempt]);
+  return { data, error, retry: () => setAttempt(value => value + 1) };
 }
 const source = (publicRead: boolean): EventSource => async (query, signal) => {
   const { data, response, error } = await client.GET("/api/schedule/catalog/events", {

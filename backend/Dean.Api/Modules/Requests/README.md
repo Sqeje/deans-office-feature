@@ -2,7 +2,9 @@
 
 Модуль владеет локальными заявками студента и неизменяемой историей обработки. Регистрация через RequestsModule/IAppModule в AppModules. UI: /student/requests?view=create и ?requestId=UUID; /staff/requests и ?requestId=UUID.
 
-API: GET/POST /api/requests/student, GET /student/{id}, GET /student/summary (204, если заявок нет); GET /staff/groups, GET /staff?groupId=UUID, GET /staff/{id}, POST /staff/{id}/status. Все пути относительно /api/requests. DTO и RequestStatus публикуются через OpenAPI; клиент генерируется штатной командой.
+API: GET/POST /api/requests/student, GET /student/{id}, GET /student/summary (204, если заявок нет); GET /staff/groups, GET /staff/summary (число заявок со статусом `submitted` или `in_review` по группам сотрудника), GET /staff?groupId=UUID, GET /staff/{id}, POST /staff/{id}/status. Все пути относительно /api/requests. DTO и RequestStatus публикуются через OpenAPI; клиент генерируется штатной командой.
+
+Список сотрудника ограничивается разрешённой группой через AccessGuard и включает ФИО студента из StudentDirectory для этой группы и университета. Выборка имён для списка не принимает StudentId или UniversityId от клиента.
 
 Создание принимает operationId (UUID) и input с kind из каталога ниже. Для справок нужны place 1–200 и copies 1–5; для обращения — reason 1–2000; для формы с периодом дополнительно start/end (календарные даты). Пробелы по краям удаляются; поля другой формы запрещены. Повтор operationId того же студента/вуза с тем же нормализованным содержимым возвращает прежнюю заявку; с другим — 409. UI сохраняет ключ незавершённой отправки в query operationId, без содержания заявки. При обновлении страницы поля нужно заполнить повторно; повтор отправки по этому URL сохраняет ключ. Новый переход «Создать заявку» начинает новую операцию.
 

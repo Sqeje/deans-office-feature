@@ -15,7 +15,7 @@ export function PointsEditor({ studentId, courseId, hideDeniedForDean }: { stude
   const [message, setMessage] = useState("");
   const value = draft ?? plan.data;
   if (plan.error) return <RequestFailure error={plan.error} retry={plan.retry} title="Не удалось загрузить балльный план" hideDeniedForDean={hideDeniedForDean} />;
-  if (!value || scores.data === undefined) return <Skeleton />;
+  if (!value || scores.data === undefined) return <Skeleton label="Загружаем баллы…" />;
   const components = value.components.length ? value.components : [
     { id: "", name: "Контрольная работа 1", kind: "assessment", maximum: 20, isAttendance: false },
     { id: "", name: "Контрольная работа 2", kind: "assessment", maximum: 20, isAttendance: false },

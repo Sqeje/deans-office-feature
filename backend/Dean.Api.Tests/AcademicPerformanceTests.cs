@@ -5,6 +5,7 @@ using Dean.Api.Kernel.Auditing;
 using Dean.Api.Kernel.Security;
 using Dean.Api.Modules.AcademicPerformance;
 using Dean.Api.Modules.Identity;
+using Dean.Api.Modules.Notifications;
 using Dean.Api.Modules.Schedule;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -40,6 +41,92 @@ public sealed class AcademicPerformanceTests
         Assert.Single(await db.Set<FinalResultHistory>().ToArrayAsync());
         Assert.Equal(4, (await student.GetFromJsonAsync<PerformanceResponse>(StudentUrl))!.Disciplines.Single(x => x.Id == CourseId).Final!.Value);
     }
+
+    [Fact]
+    public async Task JournalGradesNotifyEachStudentAndOnlyDeanCanCorrectWithReason()
+    {
+        await using var env = await TestApp.Create();
+        using var teacher = await env.Login("staff@demo.invalid", env.StaffPassword);
+        using var dean = await env.Login("dean1@demo.invalid", env.StaffPassword);
+        using var firstStudent = await env.Login("student1@demo.invalid", env.Password1);
+        using var secondStudent = await env.Login("student2@demo.invalid", env.Password2);
+        var firstProfile = (await firstStudent.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
+        var secondProfile = (await secondStudent.GetFromJsonAsync<ProfileResponse>("/api/identity/me"))!;
+
+        var courses = (await teacher.GetFromJsonAsync<JournalCourseDto[]>("/api/academic-performance/staff/journal-courses"))!;
+        var course = courses.Single(x => x.CourseId == CourseId);
+        var initialJournal = (await teacher.GetFromJsonAsync<JournalResponse>(
+            $"/api/academic-performance/staff/courses/{course.CourseId}/journal"))!;
+        var recipients = new HashSet<string>([firstProfile.Id, secondProfile.Id], StringComparer.Ordinal);
+        var lessonId = initialJournal.Lessons.First(x => x.CanEdit).LessonId;
+        using (var scope = env.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var journal = await db.Set<LessonJournal>().Include(x => x.Entries).SingleOrDefaultAsync(x => x.Id == lessonId);
+            if (journal is not null)
+            {
+                var clearedGrade = false;
+                foreach (var entry in journal.Entries.Where(x => recipients.Contains(x.StudentId)))
+                {
+                    if (entry.Grade is null) continue;
+                    entry.Grade = null;
+                    entry.CorrectionReason = null;
+                    clearedGrade = true;
+                }
+                if (clearedGrade) journal.Version++;
+                await db.SaveChangesAsync();
+            }
+        }
+        var teacherJournal = (await teacher.GetFromJsonAsync<JournalResponse>(
+            $"/api/academic-performance/staff/courses/{course.CourseId}/journal"))!;
+        var lesson = teacherJournal.Lessons.Single(x => x.LessonId == lessonId);
+        var firstRow = lesson.Rows.Single(x => x.StudentId == firstProfile.Id);
+        var secondRow = lesson.Rows.Single(x => x.StudentId == secondProfile.Id);
+        Assert.Null(firstRow.Grade);
+        Assert.Null(secondRow.Grade);
+        Assert.Contains(lesson.Rows, x => x.StudentId == firstProfile.Id);
+        Assert.Contains(lesson.Rows, x => x.StudentId == secondProfile.Id);
+
+        await Csrf(teacher);
+        var entries = new[] { firstRow, secondRow }.Select(x => new JournalRowInput(x.StudentId, 4, x.Attendance)).ToArray();
+        var saved = await teacher.PutAsJsonAsync($"/api/academic-performance/staff/lessons/{lesson.LessonId}/journal",
+            new SaveJournalRequest(lesson.Version, entries));
+        Assert.Equal(HttpStatusCode.NoContent, saved.StatusCode);
+
+        async Task<NotificationFeed> GradeNotifications(HttpClient client) =>
+            (await client.GetFromJsonAsync<NotificationFeed>("/api/notifications/student"))!;
+
+        var firstNotices = (await GradeNotifications(firstStudent)).Items.Where(x => x.Category == "grade").ToArray();
+        var secondNotices = (await GradeNotifications(secondStudent)).Items.Where(x => x.Category == "grade").ToArray();
+        Assert.Single(firstNotices);
+        Assert.Single(secondNotices);
+        Assert.Contains("выставлена оценка 4", firstNotices[0].Text);
+        Assert.Contains("выставлена оценка 4", secondNotices[0].Text);
+
+        var teacherCorrection = await teacher.PutAsJsonAsync($"/api/academic-performance/staff/lessons/{lesson.LessonId}/journal",
+            new SaveJournalRequest(lesson.Version + 1, [new JournalRowInput(firstProfile.Id, 5, firstRow.Attendance)]));
+        Assert.Equal(HttpStatusCode.Forbidden, teacherCorrection.StatusCode);
+
+        var deanJournal = (await dean.GetFromJsonAsync<JournalResponse>(
+            $"/api/academic-performance/staff/courses/{course.CourseId}/journal"))!;
+        var deanLesson = deanJournal.Lessons.Single(x => x.LessonId == lesson.LessonId);
+        await Csrf(dean);
+        var correctionUrl = $"/api/academic-performance/staff/lessons/{lesson.LessonId}/journal";
+        var withoutReason = await dean.PutAsJsonAsync(correctionUrl,
+            new SaveJournalRequest(deanLesson.Version, [new JournalRowInput(firstProfile.Id, 5, firstRow.Attendance)]));
+        Assert.Equal(HttpStatusCode.BadRequest, withoutReason.StatusCode);
+        var corrected = await dean.PutAsJsonAsync(correctionUrl,
+            new SaveJournalRequest(deanLesson.Version,
+                [new JournalRowInput(firstProfile.Id, 5, firstRow.Attendance, "Исправлена ошибка ввода")]));
+        Assert.Equal(HttpStatusCode.NoContent, corrected.StatusCode);
+
+        firstNotices = (await GradeNotifications(firstStudent)).Items.Where(x => x.Category == "grade").ToArray();
+        secondNotices = (await GradeNotifications(secondStudent)).Items.Where(x => x.Category == "grade").ToArray();
+        Assert.Equal(2, firstNotices.Length);
+        Assert.Contains(firstNotices, x => x.Title == "Оценка исправлена" && x.Text.Contains("4 → 5"));
+        Assert.Single(secondNotices);
+    }
+
     [Fact]
     public async Task StudentsReadTheirOwnResultsAndStaffChangePersistsWithOneAudit()
     {

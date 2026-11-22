@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { ApiError } from "../../shared/api";
-import { Button } from "../../components/ui/button";
+import { ErrorPanel } from "../../shared/states";
 
 export function useRemote<T>(
   key: string,
@@ -52,22 +52,10 @@ export function RequestFailure({
     return <Navigate to="/login?expired=1" replace />;
   const denied = error instanceof ApiError && error.status === 403;
   if (denied && hideDeniedForDean) return null;
-  return (
-    <section className="academic-panel" role="alert">
-      <h2>{denied ? "Нет доступа" : title}</h2>
-      <p>
-        {denied
-          ? "Нет разрешения на эти данные. Обратитесь к сотруднику деканата."
-          : "Попробуйте ещё раз."}
-      </p>
-      {error instanceof ApiError && error.traceId && (
-        <p className="muted">Код обращения: {error.traceId}</p>
-      )}
-      {!denied && (
-        <Button variant="primary" onClick={retry}>
-          Повторить
-        </Button>
-      )}
-    </section>
-  );
+  return <ErrorPanel
+    title={denied ? "Нет доступа" : title}
+    message={denied ? "Нет разрешения на эти данные. Обратитесь к сотруднику деканата." : "Попробуйте ещё раз."}
+    traceId={error instanceof ApiError ? error.traceId : undefined}
+    onRetry={denied ? undefined : retry}
+  />;
 }

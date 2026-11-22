@@ -29,6 +29,10 @@ for (const width of [360, 390, 768, 1024, 1280, 1440]) {
     await page.getByRole("link", { name: "Посмотреть расписание →" }).click();
     await expect(page).toHaveURL(/\/schedule\/teachers\//);
     await expect(page.locator(".schedule-day-table")).toHaveCount(7);
+    const teacherPath = page.getByRole("navigation", { name: "Путь расписания" });
+    await expect(teacherPath.getByRole("link", { name: "Все расписания", exact: true })).toBeVisible();
+    await expect(teacherPath.getByRole("link", { name: "Преподаватели", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /К поиску преподавателя/ })).toHaveCount(0);
     await page.getByRole("link", { name: /^Группа / }).first().click();
     await expect(page).toHaveURL(/\/schedule\/groups\//);
     await page.getByRole("button", { name: "Контрольные и экзамены", exact: true }).click();
@@ -37,10 +41,9 @@ for (const width of [360, 390, 768, 1024, 1280, 1440]) {
     await page.getByLabel("Поиск преподавателя").fill("Орлова");
     await expect(page.locator(".schedule-search li")).toHaveCount(1);
     await page.getByRole("link", { name: "Мария Павловна Орлова", exact: true }).click();
-    await page.getByRole("link", { name: "← К поиску преподавателя" }).click();
-    await expect(page.getByLabel("Поиск преподавателя")).toHaveValue("Орлова");
-    await page.reload();
-    await expect(page.getByLabel("Поиск преподавателя")).toHaveValue("Орлова");
+    await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "Все расписания", exact: true }).click();
+    await expect(page).toHaveURL(/\/schedule$/);
+    await expect(page.getByLabel("Поиск преподавателя")).toHaveValue("");
     await page.getByLabel("Поиск преподавателя").fill("НетТакогоПреподавателя");
     await expect(page.getByText("Преподаватели не найдены.")).toBeVisible();
     await page.getByRole("link", { name: "На главную", exact: true }).click();

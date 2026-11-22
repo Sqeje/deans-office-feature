@@ -952,6 +952,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/academic-performance/staff/journal-courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JournalCourseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/academic-performance/staff/courses/{courseId}/journal": {
         parameters: {
             query?: never;
@@ -1014,6 +1049,20 @@ export interface paths {
             responses: {
                 /** @description No Content */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1624,6 +1673,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requests/staff/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffRequestSummaryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requests/staff": {
         parameters: {
             query?: never;
@@ -1890,6 +1974,15 @@ export interface components {
             author: string;
             rejectionReason: null | string;
         };
+        JournalCourseDto: {
+            /** Format: uuid */
+            courseId: string;
+            courseName: string;
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
+            semesterId: string;
+        };
         JournalLessonDto: {
             /** Format: uuid */
             lessonId: string;
@@ -1918,12 +2011,14 @@ export interface components {
             /** Format: int32 */
             grade: null | number | string;
             attendance: components["schemas"]["AttendanceMark"];
+            correctionReason: null | string;
         };
         JournalRowInput: {
             studentId: string;
             /** Format: int32 */
             grade: null | number | string;
             attendance: components["schemas"]["AttendanceMark"];
+            reason?: null | string;
         };
         LoginRequest: {
             email: string;
@@ -2157,6 +2252,10 @@ export interface components {
             id: string;
             name: string;
             actions: components["schemas"]["PermissionCode"][];
+        };
+        StaffRequestSummaryDto: {
+            /** Format: int32 */
+            actionRequiredCount: number | string;
         };
         StudentPointComponentDto: {
             /** Format: uuid */

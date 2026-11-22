@@ -124,7 +124,7 @@ test("staff has a separate mobile workspace and applicants stay public", async (
   await page.getByLabel("Пароль", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/staff/);
-  await expect(page.getByText("РАБОЧЕЕ МЕСТО СОТРУДНИКА")).toBeVisible();
+  await expect(page.getByText("Рабочее место сотрудника", { exact: true })).toBeVisible();
   const contextResponse = await page.request.get("/api/identity/staff-context");
   expect(contextResponse.ok()).toBeTruthy();
   const context = await contextResponse.json();

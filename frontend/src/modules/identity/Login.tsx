@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { PasswordField, TextField } from "../../components/ui/primitives";
 import { Brand, PrototypeNotice } from "../../shared/brand";
 import { api, ApiError, type Session } from "../../shared/api";
 import { useSession } from "../../shared/session";
@@ -88,65 +89,37 @@ export function Login() {
           <h1>{roleLabel ? `Вход для ${roleLabel}` : "Вход в кабинет"}</h1>
           {roleLabel && <p className="muted">Войдите под своей учётной записью. Доступные разделы определяются правами аккаунта.</p>}
           {expired && <p role="status">Сеанс завершён. Войдите снова</p>}
-          <div className="field">
-            <label htmlFor="username">Логин</label>
-            <p id="username-hint" className="muted">
-              Электронная почта
-            </p>
-            <input
-              id="username"
-              name="username"
-              type="email"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              required
-              maxLength={256}
-              aria-label="Логин — Электронная почта"
-              aria-invalid={!!fields.username}
-              aria-describedby="username-hint username-error"
-            />
-            <p id="username-error" className="field-error">
-              {fields.username}
-            </p>
-          </div>
-          <div className="field">
-            <label htmlFor="password">Пароль</label>
-            <div className="password-control">
-              <input
-                id="password"
-                name="password"
-                type={visible ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                maxLength={256}
-                aria-invalid={!!fields.password}
-                aria-describedby="password-error"
-              />
-              <button
-                className="icon-button"
-                type="button"
-                aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
-                aria-pressed={visible}
-                onClick={() => setVisible(!visible)}
-              >
-                {visible ? (
-                  <EyeOff aria-hidden="true" />
-                ) : (
-                  <Eye aria-hidden="true" />
-                )}
-              </button>
-            </div>
-            <p id="password-error" className="field-error">
-              {fields.password}
-            </p>
-          </div>
+          <TextField
+            id="username"
+            name="username"
+            label="Логин"
+            description="Электронная почта"
+            type="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            maxLength={256}
+            aria-label="Логин — Электронная почта"
+            error={fields.username}
+          />
+          <PasswordField
+            id="password"
+            name="password"
+            label="Пароль"
+            autoComplete="current-password"
+            required
+            maxLength={256}
+            error={fields.password}
+            visible={visible}
+            onToggleVisibility={() => setVisible(!visible)}
+          />
           {error && (
             <p role="alert" className="field-error">
               {error}
             </p>
           )}
-          <Button disabled={busy} className="auth-submit">
+          <Button pending={busy} className="auth-submit">
             {busy && <LoaderCircle aria-hidden="true" />}
             {busy ? "Входим…" : "Войти"}
           </Button>

@@ -166,32 +166,34 @@
 .academic-page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--space-6);
   min-width: 0;
 }
 .academic-page h1 {
-  font-size: clamp(1.875rem, 3.3vw, 3.25rem);
-  font-weight: 750;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 .academic-page h2 {
-  font-size: 1.75rem;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  margin: 0 0 22px;
+  line-height: 28px;
+  letter-spacing: 0;
+  margin: 0 0 var(--space-4);
 }
 .academic-page-header {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
-  align-items: center;
-  min-height: 96px;
+  gap: var(--space-4);
+  align-items: flex-start;
+  min-height: 0;
+  margin: 0;
 }
 .academic-page-header p {
-  font-size: 1.25rem;
+  font-size: 16px;
+  line-height: 24px;
   color: var(--color-text-muted);
   margin-top: 6px;
 }
@@ -206,11 +208,11 @@
   min-width: 240px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius-control);
   font-weight: 650;
-  font-size: 1.25rem;
-  height: 54px;
-  padding: 8px 40px 8px 18px;
+  font-size: 16px;
+  min-height: 48px;
+  padding: 8px 40px 8px 12px;
   box-shadow: 0 2px 4px rgb(17 19 24 / 0.03);
 }
 .academic-stats {
@@ -221,9 +223,9 @@
 .academic-stat,
 .academic-panel {
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: var(--radius-card);
   background: var(--color-surface);
-  box-shadow: 0 2px 3px rgb(17 19 24 / 0.025);
+  min-width: 0;
 }
 .academic-stat {
   display: flex;
@@ -250,7 +252,7 @@
   flex-shrink: 0;
   color: var(--color-primary);
   background: var(--color-primary-soft);
-  border-radius: 18px;
+  border-radius: var(--radius-control);
 }
 .academic-icon svg {
   width: 34px;
@@ -260,6 +262,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
   gap: 24px;
+  align-items: start;
 }
 .academic-panel {
   padding: 24px;
@@ -312,6 +315,10 @@
   padding: 4px 16px;
   white-space: normal;
   text-align: center;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  max-width: 100%;
 }
 .academic-session {
   display: flex;
@@ -506,25 +513,28 @@
     font-size: 1.875rem;
   }
   .academic-panel {
-    padding: 18px 14px;
+    padding: var(--space-4);
   }
-  .academic-page h2 {
-    font-size: 1.5rem;
-  }
+  .academic-page h1 { font-size:26px; line-height:32px; }
   .academic-table-head {
     display: none;
   }
   .academic-table-row {
-    grid-template-columns: minmax(0, 1fr) auto 16px;
+    grid-template-columns: minmax(0, 1fr) 16px;
     gap: 10px;
     font-size: 1rem;
   }
+  .academic-table-row > [role="cell"]:first-child { grid-column: 1; grid-row: 1; }
+  .academic-table-row > .academic-assessment { grid-column: 1; grid-row: 2; }
+  .academic-table-row > [role="cell"]:nth-of-type(3) { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
+  .academic-table-row > svg { grid-column: 2; grid-row: 1; }
   .academic-table-row strong {
     grid-column: 1 / -1;
   }
   .academic-page .status-badge {
     font-size: 0.875rem;
     padding: 4px 10px;
+    text-align: left;
   }
   .academic-table-row .academic-assessment {
     font-size: 0.875rem;
@@ -549,57 +559,27 @@
   color: var(--color-text-muted);
   font-size: 1.125rem;
 }
-.academic-breadcrumb a,
-.academic-back {
+.academic-breadcrumb a {
   color: var(--color-primary);
-  font-weight: 600;
-}
-.academic-result-filter {
-  align-self: flex-end;
-  margin-top: -108px;
-  margin-bottom: 28px;
-}
-.academic-result-filter select {
-  min-height: 54px;
-  min-width: 240px;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-surface);
-  padding: 8px 18px;
-  font-size: 1.25rem;
   font-weight: 600;
 }
 .academic-results-summary {
   color: var(--color-text-muted);
-  font-size: 1.25rem;
-}
-.academic-page:has(.academic-results) .academic-page-header {
-  padding-right: 264px;
+  font-size: 16px;
+  margin: 0;
 }
 .academic-demo-note {
   font-size: 0.75rem;
   color: var(--color-text-muted);
   margin-top: 12px;
 }
-@media (max-width: 1100px) {
-  .academic-result-filter {
-    margin: 0;
-    align-self: stretch;
-  }
-  .academic-result-filter select {
-    width: 100%;
-  }
-  .academic-page:has(.academic-results) .academic-page-header {
-    padding-right: 0;
-  }
-}
 .academic-attestation {
   display: flex;
   align-items: center;
-  gap: 32px;
-  padding: 24px 28px;
+  gap: 24px;
+  padding: 24px;
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: var(--radius-card);
   background: linear-gradient(
     110deg,
     var(--color-hero-start),
@@ -607,31 +587,34 @@
   );
 }
 .academic-attestation > .academic-icon {
-  width: 84px;
-  height: 84px;
+  width: 56px;
+  height: 56px;
 }
 .academic-attestation > div {
   border-left: 1px solid var(--color-border);
-  padding-left: 32px;
+  padding-left: 24px;
   flex: 1;
 }
 .academic-attestation p {
-  font-size: 1.25rem;
+  font-size: 16px;
+  line-height: 24px;
   color: var(--color-text-muted);
   margin-bottom: 8px;
 }
 .academic-attestation h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 20px;
+  line-height: 28px;
 }
 .academic-attestation .status-badge {
-  font-size: 1.75rem;
-  padding: 10px 34px;
+  font-size: 16px;
+  padding: 8px 16px;
 }
 .academic-discipline-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
   gap: 24px;
+  align-items: start;
 }
 .academic-grades-row {
   display: grid;
@@ -657,7 +640,7 @@
 .academic-work .academic-icon {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--radius-control);
 }
 .academic-work svg {
   width: 26px;
@@ -666,9 +649,9 @@
 .academic-grade {
   background: var(--color-success-soft);
   color: var(--color-success);
-  border-radius: 16px;
+  border-radius: var(--radius-control);
   text-align: center;
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 700;
   padding: 2px 12px;
 }
@@ -734,18 +717,6 @@
     overflow-wrap: anywhere;
   }
 }
-.academic-back {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.academic-back svg {
-  width: 22px;
-  height: 22px;
-}
-.academic-page:has(.academic-back) {
-  gap: 24px;
-}
 .academic-page [tabindex="-1"]:focus:not(:focus-visible) {
   outline: none;
 }
@@ -758,24 +729,11 @@
   top: -80px;
   right: -330px;
 }
-.academic-page:has(.academic-back) {
-  margin-top: -76px;
-}
-.academic-page:has(.academic-results) {
-  margin-top: -36px;
-}
-.academic-page:has(.academic-back) .academic-back {
-  margin-right: 140px;
-}
 .academic-grade-failed {
   background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 @media (max-width: 767px) {
-  .academic-page:has(.academic-back),
-  .academic-page:has(.academic-results) {
-    margin-top: 0;
-  }
   .academic-page .academic-stat h2 {
     font-size: 1.0625rem;
   }
@@ -799,6 +757,7 @@
   margin-top: 24px;
   min-width: 0;
 }
+.performance-staff > .page-header { margin: 0; }
 .performance-home {
   padding: 24px;
   background: var(--color-surface-raised);
@@ -931,61 +890,41 @@
   min-width: 0;
   text-overflow: ellipsis;
 }
-.journal-details,
-.journal-details dl,
-.journal-actions {
-  display: grid;
-  gap: 12px;
-}
-.journal-details dl {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
-}
-.journal-details dt,
-.journal-lesson-details time {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-}
-.journal-details dd {
-  margin: 2px 0 0;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.journal-lesson-details {
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
-}
-.journal-lesson-details h2 {
-  margin-top: 4px;
-}
-.journal-actions button {
-  justify-self: start;
-}
-@media (max-width: 1023px) {
-  .journal-actions-sticky {
-    position: sticky;
-    bottom: var(--cabinet-bottom-offset, 0px);
-    z-index: 2;
-    padding-block: 8px;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-  .journal-actions-sticky button {
-    width: 100%;
-  }
-}
+.journal-matrix-panel { display:grid; gap:16px; min-width:0; }
+.journal-matrix-scroll { max-width:100%; overflow:auto; border:1px solid var(--color-border); border-radius:12px; background:var(--color-surface-raised); }
+.journal-matrix { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+.journal-matrix th,
+.journal-matrix td { width:136px; min-width:128px; max-width:136px; padding:8px 10px; text-align:left; vertical-align:top; border-bottom:1px solid var(--color-border); border-right:1px solid var(--color-border); }
+.journal-matrix th { width:136px; min-width:128px; max-width:136px; padding:8px 10px; text-align:left; vertical-align:top; border-bottom:1px solid var(--color-border); border-right:1px solid var(--color-border); }
+.journal-matrix thead th { position:sticky; top:0; z-index:2; background:var(--color-primary-soft); font-weight:650; }
+.journal-matrix thead th:first-child,
+.journal-matrix tbody th { position:sticky; left:0; z-index:3; width:180px; min-width:180px; max-width:180px; background:var(--color-surface); font-weight:600; }
+.journal-matrix thead th:first-child { z-index:4; background:var(--color-primary-soft); }
+.journal-matrix th:last-child,
+.journal-matrix td:last-child { border-right:0; }
+.journal-matrix tbody tr:last-child > * { border-bottom:0; }
+.journal-matrix thead th small { display:block; margin-top:4px; color:var(--color-text-muted); font-size:12px; font-weight:450; line-height:1.35; }
+.journal-matrix-cell { display:grid; gap:4px; min-width:108px; }
+.journal-matrix-cell select { width:100%; min-width:0; min-height:44px; padding:7px 28px 7px 9px; border:1px solid var(--color-control-border); border-radius:var(--radius-control); background:var(--color-surface-raised); color:var(--color-text); }
+.journal-grade-value,
+.journal-grade-empty,
+.journal-attendance-value { display:block; min-height:36px; padding:7px 9px; text-align:center; font-variant-numeric:tabular-nums; }
+.journal-grade-value { border-radius:var(--radius-control); background:var(--color-primary-soft); color:var(--color-primary); font-size:16px; }
+.journal-grade-empty { color:var(--color-text-muted); }
+.journal-grade-button.ui-button { width:100%; min-height:44px; padding:8px 10px; font-size:16px; }
+.journal-correction-note,
+.journal-readonly-note { color:var(--color-text-muted); font-size:12px; line-height:1.35; }
+.journal-correction-dialog { width:min(520px, calc(100% - 32px)); max-height:min(90dvh, 720px); margin:auto; padding:24px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); color:var(--color-text); }
+.journal-correction-dialog::backdrop { background:color-mix(in srgb, var(--color-text) 44%, transparent); }
+.journal-correction-dialog form { display:grid; gap:16px; }
+.journal-correction-dialog h2,
+.journal-correction-dialog p { margin:0; }
+.journal-correction-reason { display:grid; gap:8px; font-weight:550; }
+.journal-correction-reason textarea { min-height:104px; width:100%; padding:12px; border:1px solid var(--color-control-border); border-radius:10px; background:var(--color-surface-raised); color:var(--color-text); }
+.journal-correction-actions { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
 @media (max-width: 767px) {
   .journal {
     gap: 16px;
-  }
-  .journal-details dl {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-  .journal-details dl > div {
-    display: grid;
-    grid-template-columns: 6rem minmax(0, 1fr);
-    gap: 8px;
-    align-items: baseline;
   }
   .journal .performance-result-form {
     gap: 12px;
@@ -997,6 +936,12 @@
   .journal-student select {
     padding-inline: 8px 20px;
   }
+  .journal-matrix th,
+  .journal-matrix td { min-width:128px; padding:8px; }
+  .journal-matrix thead th:first-child,
+  .journal-matrix tbody th { width:148px; min-width:148px; max-width:148px; }
+  .journal-correction-dialog { padding:18px; }
+  .journal-correction-actions > button { flex:1 1 100%; }
 }
 .staff-reason { display:block; width:100%; min-height:88px; padding:12px; border:1px solid var(--color-control-border); border-radius:10px; }
 .staff-next { background:linear-gradient(110deg,var(--color-primary-soft),var(--color-hero-end)); }

@@ -28,7 +28,7 @@ export function AcademicSummary() {
       {catalog.error ? (
         <RequestFailure error={catalog.error} retry={catalog.retry} />
       ) : !catalog.data ? (
-        <Skeleton />
+        <Skeleton label="Загружаем семестры…" />
       ) : !catalog.data.semesters.length ? (
         <EmptyState
           title="Семестров пока нет"
@@ -62,7 +62,7 @@ export function AcademicSummary() {
           ) : result.error ? (
             <RequestFailure error={result.error} retry={result.retry} />
           ) : !summary ? (
-            <Skeleton />
+            <Skeleton label="Загружаем успеваемость…" />
           ) : (
             <>
               {summary.total === 0 ? (

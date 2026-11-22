@@ -5,6 +5,9 @@ using Dean.Api.Kernel.Modules;
 using Dean.Api.Kernel.Security;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 namespace Dean.Api.Modules.Notifications;
 
 internal sealed class RequestNotifications(AppDbContext db) : IRequestNotifications
@@ -17,10 +20,35 @@ internal sealed class RequestNotifications(AppDbContext db) : IRequestNotificati
             Text = status == "ready" ? "Документ по вашей заявке готов и ещё не получен. Обратитесь в учебный офис; место и время выдачи уточните у сотрудника." : status == "completed" ? "Выполнение вашей заявки подтверждено сотрудником. Подробности доступны в истории заявки." : "Статус вашей заявки изменился. Откройте заявку для подробностей.", CreatedAt = occurredAt, RelatedType = "request", RelatedId = requestId });
     }
 }
+internal sealed class AcademicGradeNotifications(AppDbContext db) : IAcademicGradeNotifications
+{
+    public void GradeChanged(Guid universityId, string studentId, Guid lessonId, string courseName,
+        DateOnly lessonDate, int? previousGrade, int? grade, long journalVersion, DateTimeOffset occurredAt)
+    {
+        var studentKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(studentId)));
+        var date = lessonDate.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+        var text = grade is null
+            ? $"Оценка по дисциплине «{courseName}» за занятие {date} снята."
+            : previousGrade is null
+                ? $"По дисциплине «{courseName}» за занятие {date} выставлена оценка {grade.Value}."
+                : $"По дисциплине «{courseName}» за занятие {date} оценка изменена: {previousGrade.Value} → {grade.Value}.";
+        db.Add(new Message
+        {
+            Id = Guid.NewGuid(), UniversityId = universityId, StudentId = studentId,
+            EventKey = $"journal-grade:{lessonId:N}:{studentKey}:{journalVersion}", Category = "grade",
+            Title = previousGrade is null ? "Новая оценка" : grade is null ? "Оценка снята" : "Оценка исправлена",
+            Text = text, CreatedAt = occurredAt
+        });
+    }
+}
 public sealed class NotificationsModule : IAppModule
 {
     public string Id => "notifications";
-    public void AddServices(IServiceCollection services, IConfiguration config) => services.AddScoped<IRequestNotifications, RequestNotifications>();
+    public void AddServices(IServiceCollection services, IConfiguration config)
+    {
+        services.AddScoped<IRequestNotifications, RequestNotifications>();
+        services.AddScoped<IAcademicGradeNotifications, AcademicGradeNotifications>();
+    }
     private static bool Student(Actor a) => a.StudentId is not null && a.Roles.Contains("Student");
     private static IQueryable<Message> Visible(AppDbContext db, Actor a) => db.Set<Message>().Where(x => x.UniversityId == a.UniversityId && (x.StudentId == null || x.StudentId == a.StudentId));
     private static NotificationDto Dto(Message x, DateTimeOffset? read = null) => new(x.Id, x.Category, x.Title, x.Text, x.CreatedAt, read, x.RelatedType, x.RelatedId);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
+import { PageHeader } from "../../components/ui/primitives";
+import { ErrorPanel } from "../../shared/states";
 import { ApiError } from "../../shared/api";
 import { scheduleApi, toEvent, type ServerEvent, type UpdateEvent } from "./api";
 import { addDays, dateKey, formatDay, formatTime, validDate, weekOf } from "./model";
@@ -28,8 +30,7 @@ export function StaffPage() {
   }, [monday, category, attempt]);
   if (error instanceof ApiError && error.status === 401) return <Navigate to="/login" state={{ expired: true }} replace />;
   return <section className="schedule-page schedule-staff">
-    <h1>Редактировать расписание</h1>
-    <p className="muted">Можно изменить только свои локальные пары. Время московское, UTC+3.</p>
+    <PageHeader title="Редактировать расписание" description="Можно изменить только свои локальные пары. Время московское, UTC+3." />
     <div className="schedule-staff-controls">
       <label>Неделя с датой<input type="date" value={day} onChange={e => { if (validDate(e.target.value)) setDay(e.target.value); }} /></label>
       <label>Тип событий<select value={category} onChange={e => setCategory(e.target.value as typeof category)}>
@@ -38,8 +39,7 @@ export function StaffPage() {
       <Button variant="outline" onClick={() => setAttempt(v => v + 1)}>Обновить</Button>
     </div>
     {message && <p role="status">{message}</p>}
-    {error ? <div className="card" role="alert"><p>{error instanceof ApiError && error.status === 403 ? "Нет доступа к редактированию расписания." : "Не удалось загрузить расписание."}</p>
-      <Button variant="outline" onClick={() => setAttempt(v => v + 1)}>Повторить</Button></div>
+    {error ? <ErrorPanel title={error instanceof ApiError && error.status === 403 ? "Нет доступа к редактированию расписания" : "Не удалось загрузить расписание"} message={error instanceof ApiError && error.status === 403 ? "Обратитесь к сотруднику деканата." : "Проверьте соединение и повторите попытку."} traceId={error instanceof ApiError ? error.traceId : undefined} onRetry={error instanceof ApiError && error.status === 403 ? undefined : () => setAttempt(v => v + 1)} />
       : !items ? <p role="status">Загружаем расписание…</p>
       : items.length === 0 ? <div className="card"><h2>В выбранную неделю занятий нет</h2></div>
       : <div className="schedule-staff-list">{items.map(event => <article key={event.id} className="card">
@@ -94,7 +94,7 @@ function EditForm({ event, cancel, saved }: { event: ServerEvent; cancel: () => 
       <label className="schedule-cancel-check"><input type="checkbox" checked={values.cancelled} onChange={e => setValues(v => e.target.checked ? { ...original, cancelled: true } : { ...v, cancelled: false })} />Занятие отменено</label>
       {values.cancelled && <p id="schedule-cancel-hint" className="muted" role="status">При отмене время и место занятия не меняются. Несохранённые правки сброшены.</p>}
       {error && <p role="alert">{error}</p>}
-      <div className="schedule-edit-actions"><Button type="submit" disabled={busy}>{busy ? "Сохраняем…" : "Сохранить изменения"}</Button><Button type="button" variant="outline" onClick={cancel}>Отмена</Button></div>
+      <div className="schedule-edit-actions"><Button type="submit" pending={busy}>{busy ? "Сохраняем…" : "Сохранить изменения"}</Button><Button type="button" variant="outline" disabled={busy} onClick={cancel}>Отмена</Button></div>
     </fieldset>
   </form>;
 }

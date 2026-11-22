@@ -6,6 +6,8 @@ import { Link, Navigate } from "react-router-dom";
 import { CalendarDays, FileText, Bell, ChevronRight } from "lucide-react";
 import { api, ApiError, type Profile } from "../../shared/api";
 import { useSession } from "../../shared/session";
+import { PageHeader } from "../../components/ui/primitives";
+import { InlineError } from "../../shared/states";
 import { AcademicSummary } from "../academic-performance/Summary";
 import { homeDemo, type HomeDemoSnapshot } from "./homeDemo";
 import { useNextLesson } from "../schedule/NextLesson";
@@ -50,12 +52,7 @@ export function SummaryCard<T>({
           Загружаем данные…
         </p>
       ) : block.status === "error" ? (
-        <div role="alert">
-          <p>Не удалось загрузить данные.</p>
-          <button className="text-button" onClick={block.retry}>
-            Повторить
-          </button>
-        </div>
+        <InlineError message="Не удалось загрузить данные." onRetry={block.retry} />
       ) : block.data === null ? (
         <p className="muted">{empty}</p>
       ) : (
@@ -97,13 +94,18 @@ export function HomeSummaries({
     status: "success",
     data: value,
   });
+  const demonstrationSections = [
+    !blocks?.lesson && "ближайшее занятие",
+    !blocks?.event && "важное событие",
+    !livePerformance && "успеваемость",
+    !liveRequests && "заявки",
+    !liveNotifications && "уведомления",
+  ].filter((section): section is string => !!section);
   return (
     <>
-      <aside className="demo-notice">
-        {blocks?.lesson && <p>Ближайшее занятие загружается с сервера. Остальные сводки:</p>}
-        Демонстрационные данные — не связаны с вашим учебным профилем.
-        Демонстрация на {date(data.asOf)}.
-      </aside>
+      {demonstrationSections.length > 0 && <aside className="demo-notice">
+        Демонстрационные данные: {demonstrationSections.join(", ")}. Пример на {date(data.asOf)}.
+      </aside>}
       <div className="home-grid">
         <SummaryCard
           title="Ближайшее занятие"
@@ -282,17 +284,9 @@ export function StudentHome() {
     return <Navigate to="/login" state={{ expired: true }} replace />;
   return (
     <>
-      <h1 tabIndex={-1}>Здравствуйте, {session?.displayName}</h1>
+      <PageHeader title={`Здравствуйте, ${session?.displayName ?? ""}`} headingProps={{ tabIndex: -1 }} />
       {error ? (
-        <div role="alert">
-          {error}{" "}
-          <button
-            className="text-button"
-            onClick={() => setAttempt(attempt + 1)}
-          >
-            Повторить
-          </button>
-        </div>
+        <InlineError message={error} onRetry={() => setAttempt(value => value + 1)} />
       ) : profile ? (
         <p className="muted">
           {profile.university} · {profile.faculty ?? "Факультет не указан"} · {profile.program ?? "Направление не указано"} · Группа {profile.group}

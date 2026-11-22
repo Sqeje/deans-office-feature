@@ -142,11 +142,12 @@ test("teacher search filters full names as typed and preserves query through nav
   await expect(input).toHaveValue("Иван Викторович");
   await page.goForward();
   await expect(page.getByRole("heading", { name: "Иван Викторович Лебедев", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "← К поиску преподавателя" }).click();
-  await expect(input).toHaveValue("Иван Викторович");
+  await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "Все расписания", exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/schedule\/catalog$/);
+  await expect(input).toHaveValue("");
   await page.reload();
-  await expect(input).toHaveValue("Иван Викторович");
-  await expect(page.locator(".schedule-search li")).toHaveCount(1);
+  await expect(input).toHaveValue("");
+  await expect(page.locator(".schedule-search li")).toHaveCount(3);
 });
 
 test("teacher card opens first, Escape restores focus; teacher week shows multiple groups", async ({ page }) => {
@@ -170,8 +171,9 @@ test("teacher card opens first, Escape restores focus; teacher week shows multip
   await expect(page.locator(".schedule-row")).toHaveCount(18);
   await expect(page.getByRole("link", { name: "Группа ПИ-21", exact: true })).toHaveCount(6);
   await page.screenshot({ path: "test-results/schedule-teacher-week-mobile.png", fullPage: true, animations: "disabled" });
-  await page.getByRole("link", { name: "← К поиску преподавателя" }).click();
-  await expect(page.getByRole("textbox", { name: "Поиск преподавателя" })).toHaveValue("Иван Викторович Лебедев");
+  await page.getByRole("navigation", { name: "Путь расписания" }).getByRole("link", { name: "Все расписания", exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/schedule\/catalog$/);
+  await expect(page.getByRole("textbox", { name: "Поиск преподавателя" })).toHaveValue("");
 });
 
 test("assessments include all current semester dates, hide period controls and restore lesson mode", async ({ page }) => {
@@ -283,7 +285,9 @@ for (const width of [360, 390, 768, 1024, 1280, 1440]) {
     if (width < 768) {
       await expect(actions).toHaveAttribute("aria-expanded", "false");
       await expect(save).toBeHidden();
-      const lesson = await page.locator(".schedule-row h3").first().boundingBox();
+      const firstLessonTitle = page.locator(".schedule-row h3").first();
+      await firstLessonTitle.scrollIntoViewIfNeeded();
+      const lesson = await firstLessonTitle.boundingBox();
       const mobileNav = await nav(page).boundingBox();
       expect(lesson!.y + lesson!.height).toBeLessThan(mobileNav!.y);
       await actions.click();

@@ -162,27 +162,16 @@ export function AllResults({
   disciplines,
   href,
   filter,
-  onFilter,
 }: {
   disciplines: readonly Discipline[];
   href: (id: string) => string;
   filter: string;
-  onFilter: (value: string) => void;
 }) {
   const shown = disciplines.filter(
     (d) => filter === "all" || d.status === filter,
   );
   return (
     <>
-      <label className="academic-result-filter">
-        <span className="sr-only">Фильтр результатов</span>
-        <select value={filter} onChange={(e) => onFilter(e.target.value)}>
-          <option value="all">Все результаты</option>
-          <option value="passed">Сдано</option>
-          <option value="pending">Не выставлены</option>
-          <option value="debt">Задолженности</option>
-        </select>
-      </label>
       <section className="academic-panel academic-results">
         <ResultsTable disciplines={shown} href={href} />
         {!shown.length && (

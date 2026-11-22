@@ -367,6 +367,10 @@ namespace Dean.Api.Migrations
                     b.Property<int>("Attendance")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CorrectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<int?>("Grade")
                         .HasColumnType("integer");
 

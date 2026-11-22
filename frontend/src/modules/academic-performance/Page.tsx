@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { SelectField, Skeleton } from "../../components/ui/primitives";
+import { PageHeader, SelectField, Skeleton } from "../../components/ui/primitives";
 import { EmptyState } from "../../shared/states";
 import { loadPerformance, loadSemesters } from "./api";
 import { RequestFailure, useRemote } from "./remote";
 import { Overview, AllResults } from "./Views";
 import { DisciplinePage } from "./DisciplinePage";
-import { Icon } from "./Icon";
 import { type PerformanceLoader, type SemesterCatalog } from "./model";
 import "./performance.css";
 
@@ -54,17 +53,11 @@ export function Page({
   return (
     <div className="academic-page">
       {disciplineId && (
-        <>
-          <Link className="academic-back" to={"?semester=" + semesterId}>
-            <Icon name="back" />
-            Вернуться к успеваемости
-          </Link>
-          <nav className="academic-breadcrumb" aria-label="Хлебные крошки">
+        <nav className="academic-breadcrumb" aria-label="Хлебные крошки">
             <Link to={"?semester=" + semesterId}>Успеваемость</Link>
             <span>/</span>
             <span>{selected?.name ?? "Дисциплина"}</span>
-          </nav>
-        </>
+        </nav>
       )}
       {all && !disciplineId && (
         <nav aria-label="Хлебные крошки" className="academic-breadcrumb">
@@ -73,44 +66,39 @@ export function Page({
           <span>Все результаты</span>
         </nav>
       )}
-      <header className="academic-page-header">
-        <div>
-          <h1 tabIndex={-1} ref={heading}>
-            {disciplineId
-              ? (selected?.name ?? "Дисциплина")
-              : all
-                ? "Все результаты"
-                : "Успеваемость"}
-          </h1>
-          {!disciplineId && !all && <p>Оценки и результаты обучения</p>}
-        </div>
-        <SelectField
-          id="performance-semester"
-          label="Семестр"
-          value={semester ? semesterId : ""}
-          onChange={(e) => {
+      <PageHeader
+        className="academic-page-header"
+        title={disciplineId ? (selected?.name ?? "Дисциплина") : all ? "Все результаты" : "Успеваемость"}
+        description={!disciplineId && !all ? "Оценки и результаты обучения" : undefined}
+        headingProps={{ tabIndex: -1, ref: heading }}
+        action={<>
+          <SelectField
+            id="performance-semester"
+            label="Семестр"
+            value={semester ? semesterId : ""}
+            onChange={(e) => {
+              const next = new URLSearchParams(params);
+              next.set("semester", e.target.value);
+              next.delete("discipline");
+              setParams(next);
+            }}
+          >
+            {!semester && <option value="" disabled>Неизвестный семестр</option>}
+            {semesters.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </SelectField>
+          {all && <SelectField id="academic-result-filter" label="Фильтр результатов" value={filter} onChange={(e) => {
             const next = new URLSearchParams(params);
-            next.set("semester", e.target.value);
-            next.delete("discipline");
+            next.set("filter", e.target.value);
             setParams(next);
-          }}
-        >
-          {!semester && (
-            <option value="" disabled>
-              Неизвестный семестр
-            </option>
-          )}
-          {semesters.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </SelectField>
-      </header>
+          }}>
+            <option value="all">Все результаты</option><option value="passed">Сдано</option><option value="pending">Не выставлены</option><option value="debt">Задолженности</option>
+          </SelectField>}
+        </>}
+      />
       {catalog.error ? (
         <RequestFailure error={catalog.error} retry={catalog.retry} />
       ) : !catalog.data ? (
-        <Skeleton />
+        <Skeleton label="Загружаем семестры…" />
       ) : !semesters.length ? (
         <EmptyState
           title="Семестров пока нет"
@@ -124,7 +112,7 @@ export function Page({
       ) : result.error ? (
         <RequestFailure error={result.error} retry={result.retry} />
       ) : !data ? (
-        <Skeleton />
+        <Skeleton label="Загружаем успеваемость…" />
       ) : (
         data && (
           <>
@@ -145,11 +133,6 @@ export function Page({
                 disciplines={data.disciplines}
                 href={href}
                 filter={filter}
-                onFilter={(value) => {
-                  const next = new URLSearchParams(params);
-                  next.set("filter", value);
-                  setParams(next);
-                }}
               />
             ) : data.disciplines.length ? (
               <Overview

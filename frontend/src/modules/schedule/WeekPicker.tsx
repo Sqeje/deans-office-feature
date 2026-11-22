@@ -11,6 +11,7 @@ function shiftMonth(month: string, delta: number) {
 export function WeekPicker({ selected, today, onSelect }: { selected: string; today: string; onSelect: (monday: string) => void }) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(selected.slice(0, 7));
+  const [placement, setPlacement] = useState<"above" | "below">("below");
   const root = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -21,7 +22,35 @@ export function WeekPicker({ selected, today, onSelect }: { selected: string; to
   for (let day = weekOf(first)[0]; day <= last; day = addDays(day, 7)) weeks.push(day);
   useEffect(() => {
     if (!open) return;
-    dialog.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+    const placeCalendar = () => {
+      const popup = dialog.current;
+      const anchor = trigger.current;
+      if (!popup || !anchor) return;
+      const anchorRect = anchor.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportBottom = viewportTop + (viewport?.height ?? document.documentElement.clientHeight);
+      const spaceAbove = anchorRect.top - viewportTop;
+      const spaceBelow = viewportBottom - anchorRect.bottom;
+      setPlacement(spaceBelow < popup.offsetHeight + 8 && spaceAbove > spaceBelow ? "above" : "below");
+    };
+    placeCalendar();
+    window.addEventListener("resize", placeCalendar);
+    window.addEventListener("scroll", placeCalendar, true);
+    window.visualViewport?.addEventListener("resize", placeCalendar);
+    window.visualViewport?.addEventListener("scroll", placeCalendar);
+    return () => {
+      window.removeEventListener("resize", placeCalendar);
+      window.removeEventListener("scroll", placeCalendar, true);
+      window.visualViewport?.removeEventListener("resize", placeCalendar);
+      window.visualViewport?.removeEventListener("scroll", placeCalendar);
+    };
+  }, [open, month]);
+  useEffect(() => {
+    if (open) dialog.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); setOpen(false); trigger.current?.focus(); }
@@ -38,7 +67,7 @@ export function WeekPicker({ selected, today, onSelect }: { selected: string; to
       <span className="schedule-week-range">{date(selected)} – {date(selectedEnd)}</span>
       <span className="schedule-week-range-compact">{numericDate(selected)} – {numericDate(selectedEnd)}</span>
     </button>
-    {open && <div className="schedule-week-calendar" role="dialog" aria-modal="false" aria-label="Выбор недели" id={id} ref={dialog}>
+    {open && <div className={`schedule-week-calendar${placement === "above" ? " is-above" : ""}`} role="dialog" aria-modal="false" aria-label="Выбор недели" id={id} ref={dialog}>
       <div className="schedule-calendar-heading"><strong>Выбор недели</strong><button type="button" aria-label="Закрыть календарь" onClick={() => { setOpen(false); trigger.current?.focus(); }}><X aria-hidden="true" /></button></div>
       <div className="schedule-calendar-month">
         <button type="button" aria-label="Предыдущий месяц" disabled={month === "1900-01"} onClick={() => setMonth(value => shiftMonth(value, -1))}><ChevronLeft aria-hidden="true" /></button>

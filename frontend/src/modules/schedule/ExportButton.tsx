@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { InlineError } from "../../shared/states";
 import type { ScheduleExport } from "./export";
 
 export function ExportButton({ ready, schedule }: { ready: boolean; schedule: ScheduleExport }) {
@@ -36,6 +37,6 @@ export function ExportButton({ ready, schedule }: { ready: boolean; schedule: Sc
       disabled={!ready || busy} aria-busy={busy} onClick={() => void save()}>
       <Download aria-hidden="true" /><span>{busy ? "Сохраняем…" : "Сохранить на устройство"}</span>
     </Button>
-    {failed && <p role="alert">Не удалось сохранить XLSX. Попробуйте ещё раз.</p>}
+    {failed && <InlineError message="Не удалось сохранить XLSX. Попробуйте ещё раз." />}
   </div>;
 }

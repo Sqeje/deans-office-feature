@@ -4,21 +4,23 @@ import { formatDate, type Discipline } from "./model";
 import { useEffect, useState } from "react";
 import { ApiError } from "../../shared/api";
 import { loadStudentPoints, type StudentPoints } from "./api";
+import { InlineError } from "../../shared/states";
 export function DisciplinePage({ discipline: d }: { discipline: Discipline }) {
   const [points, setPoints] = useState<StudentPoints>();
-  const [pointsError, setPointsError] = useState(false);
+  const [pointsError, setPointsError] = useState<unknown>();
   const [pointsMissing, setPointsMissing] = useState(false);
+  const [pointsAttempt, setPointsAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    setPoints(undefined); setPointsError(false); setPointsMissing(false);
-    loadStudentPoints(d.id, controller.signal).then(setPoints).catch(error => { if (!controller.signal.aborted) { if (error instanceof ApiError && error.status === 404) setPointsMissing(true); else setPointsError(true); } });
+    setPoints(undefined); setPointsError(undefined); setPointsMissing(false);
+    loadStudentPoints(d.id, controller.signal).then(setPoints).catch(error => { if (!controller.signal.aborted) { if (error instanceof ApiError && error.status === 404) setPointsMissing(true); else setPointsError(error); } });
     return () => controller.abort();
-  }, [d.id]);
+  }, [d.id, pointsAttempt]);
   return (
     <>
       <section className="academic-panel academic-points" aria-labelledby="points-title">
         <div className="academic-points-heading"><h2 id="points-title">Накопленные баллы</h2>{!!points?.components.length && <strong>Набрано {points.earned} из {points.maximum}</strong>}</div>
-        {pointsError ? <p role="alert">Не удалось загрузить балльный план.</p> : pointsMissing ? <p className="muted">Балльный план для этой дисциплины пока недоступен.</p> : !points ? <p className="muted" role="status">Загружаем баллы…</p> : points.components.length === 0 ? <p className="muted">Балльный план ещё не опубликован.</p> : <>
+        {pointsError ? <InlineError message={pointsError instanceof ApiError && pointsError.status === 403 ? "Нет доступа к балльному плану. Обратитесь к сотруднику деканата." : "Не удалось загрузить балльный план. Проверьте соединение и повторите попытку."} traceId={pointsError instanceof ApiError ? pointsError.traceId : undefined} onRetry={pointsError instanceof ApiError && pointsError.status === 403 ? undefined : () => setPointsAttempt(value => value + 1)} /> : pointsMissing ? <p className="muted">Балльный план для этой дисциплины пока недоступен.</p> : !points ? <p className="muted" role="status">Загружаем баллы…</p> : points.components.length === 0 ? <p className="muted">Балльный план ещё не опубликован.</p> : <>
           <progress className="academic-score-progress" aria-label="Накопленные баллы" value={points.earned} max={points.maximum} />
           <p className="muted">Баллы за выполненные работы и посещение. Невыставленные результаты ещё не входят в сумму.</p>
           <ul>{points.components.map(component => <li key={component.id}><span>{component.name}{component.incomplete && <small> · Есть неотмеченные занятия</small>}</span><strong>{component.points === null ? `Не выставлено · из ${component.maximum}` : `${component.points} из ${component.maximum}`}</strong></li>)}</ul>

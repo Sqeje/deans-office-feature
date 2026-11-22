@@ -27,27 +27,57 @@ test("staff dashboard shows named assignments and real next lesson",async ({page
   await expect(page.getByRole("link",{name:"Базы данных · Осень 2026"})).toHaveAttribute("href","/staff/academic-performance?view=journal&course=course");
   for(const width of [360,1280]) {await page.setViewportSize({width,height:900});await page.screenshot({path:testInfo.outputPath("staff-dashboard-"+width+".png"),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();}
 });
-test("journal preserves draft on conflict and shows cancelled lesson read only", async ({ page }, testInfo) => {
+test("journal matrix lets teachers set grades once and requires a dean reason to correct", async ({ page }, testInfo) => {
   await page.route("**/api/identity/session", r => r.fulfill({ json: { userId:"teacher", universityId:"demo", displayName:"Тестовый преподаватель", roles:["Staff","Teacher"], permissions:[{permission:"grades.read",groupId:"group"},{permission:"journal.write",groupId:"group"}], areas:["staff"] } }));
   await page.route("**/api/identity/csrf", r => r.fulfill({ json:{token:"test"} }));
   await page.route("**/api/identity/staff-context", r => r.fulfill({ json: { roles:["Teacher"], groups:[{id:"group",name:"ИВТ-401",actions:["grades.read","journal.write"]}],assignments:[{id:"assignment",courseId:"course",groupId:"group",semesterId:"2026-autumn",courseName:"Базы данных"}] } }));
-  const rows = [{ studentId:"student", fullName:"Тестовый Студент", grade:null, attendance:"unmarked" }];
+  const rows = [
+    { studentId:"student", fullName:"Тестовый Студент", grade:null, attendance:"unmarked", correctionReason:null },
+    { studentId:"graded", fullName:"Уже оценён", grade:4, attendance:"present", correctionReason:null },
+  ];
   await page.route("**/api/academic-performance/staff/courses/course/journal", r => r.fulfill({ json:{courseId:"course",courseName:"Базы данных",groupId:"group",semesterId:"2026-autumn",lessons:[{lessonId:"lesson",startsAt:"2026-11-10T09:00:00Z",subject:"Практическая работа",isCancelled:false,canEdit:true,readOnlyReason:null,version:0,rows},{lessonId:"cancelled",startsAt:"2026-11-11T09:00:00Z",subject:"Отменённая пара",isCancelled:true,canEdit:false,readOnlyReason:"Занятие отменено.",version:0,rows}]} }));
-  await page.route("**/api/academic-performance/staff/lessons/lesson/journal", r => r.fulfill({status:409,json:{code:"journal_conflict"}}));
-  await page.goto("/staff/academic-performance?view=journal&course=course&lesson=lesson");
-  await expect(page.getByLabel("Занятие", { exact:true })).toHaveValue("lesson");
-  await page.getByLabel("Оценка", { exact:true }).selectOption("5");
-  await page.getByLabel("Посещаемость", { exact:true }).selectOption("present");
-  await page.getByRole("button",{name:"Сохранить журнал",exact:true}).click();
-  await expect(page.getByRole("alert")).toContainText("Ваш черновик сохранён");
-  await expect(page.getByLabel("Оценка", { exact:true })).toHaveValue("5");
-  await expect(page.getByLabel("Посещаемость", { exact:true })).toHaveValue("present");
-  for (const width of [360,1280]) { await page.setViewportSize({width,height:900}); await page.screenshot({path:testInfo.outputPath("journal-conflict-"+width+".png"),fullPage:true}); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy(); }
-  await page.getByLabel("Занятие", { exact:true }).selectOption("cancelled");
-  await expect(page).toHaveURL(/lesson=cancelled/);
-  await page.reload();
-  await expect(page.getByText("Занятие отменено.",{exact:true})).toBeVisible();
-  await expect(page.getByLabel("Оценка", { exact:true })).toBeDisabled();
+  let savedBody: unknown;
+  await page.route("**/api/academic-performance/staff/lessons/lesson/journal", async r => { savedBody = r.request().postDataJSON(); await r.fulfill({status:204}); });
+  await page.goto("/staff/academic-performance?view=journal&course=course");
+  await expect(page.getByRole("table", { name:"Оценки по занятиям" })).toBeVisible();
+  await expect(page.getByRole("rowheader", { name:"Тестовый Студент" })).toBeVisible();
+  await page.getByLabel("Оценка Тестовый Студент, 10.11").selectOption("5");
+  await expect(page.getByText("Оценка выставлена. Студент получит уведомление.", { exact:true })).toBeVisible();
+  expect(savedBody).toMatchObject({ version:0, rows:[{studentId:"student",grade:5,attendance:"unmarked"}] });
+  await expect(page.getByLabel("Оценка Тестовый Студент, 10.11")).toHaveCount(0);
+  await expect(page.getByLabel("Оценка Уже оценён, 10.11")).toHaveCount(0);
+  await expect(page.getByLabel("Оценка Тестовый Студент, 11.11")).toHaveCount(0);
+  await page.getByLabel("Посещаемость Тестовый Студент, 10.11").selectOption("present");
+  await expect(page.getByLabel("Посещаемость Тестовый Студент, 10.11")).toHaveValue("present");
+  for (const width of [360,1280]) { await page.setViewportSize({width,height:900}); await page.screenshot({path:testInfo.outputPath("journal-matrix-"+width+".png"),fullPage:true}); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy(); }
+
+  const browser = page.context().browser();
+  if (!browser) throw new Error("Browser context is unavailable");
+  const deanPage = await browser.newPage();
+  try {
+    await deanPage.route("**/api/identity/session", r => r.fulfill({ json: { userId:"dean", universityId:"demo", displayName:"Декан", roles:["Staff","Dean"], permissions:[{permission:"grades.read",groupId:"group"},{permission:"grades.correct",groupId:"group"}], areas:["staff"] } }));
+    await deanPage.route("**/api/identity/staff-context", r => r.fulfill({ json: { roles:["Staff","Dean"], groups:[{id:"group",name:"ИВТ-401",actions:["grades.read","grades.correct"]}], assignments:[] } }));
+    await deanPage.route("**/api/identity/csrf", r => r.fulfill({ json:{token:"test"} }));
+    await deanPage.route("**/api/academic-performance/staff/journal-courses", r => r.fulfill({ json:[{courseId:"course",courseName:"Базы данных",groupId:"group",groupName:"ИВТ-401",semesterId:"2026-autumn"}] }));
+    await deanPage.route("**/api/academic-performance/staff/courses/course/journal", r => r.fulfill({ json:{courseId:"course",courseName:"Базы данных",groupId:"group",semesterId:"2026-autumn",lessons:[{lessonId:"lesson",startsAt:"2026-11-10T09:00:00Z",subject:"Практическая работа",isCancelled:false,canEdit:true,readOnlyReason:null,version:2,rows:[{studentId:"graded",fullName:"Уже оценён",grade:4,attendance:"present",correctionReason:null}]}]} }));
+    let correctionBody: unknown;
+    await deanPage.route("**/api/academic-performance/staff/lessons/lesson/journal", async r => { correctionBody = r.request().postDataJSON(); await r.fulfill({status:204}); });
+    await deanPage.goto("/staff/academic-performance?view=journal");
+    await deanPage.getByLabel("Группа и дисциплина", { exact:true }).selectOption("course");
+    const currentGrade = deanPage.getByRole("button", { name:/Исправить оценку Уже оценён, 10\.11: 4/ });
+    await currentGrade.click();
+    await expect(deanPage.getByRole("dialog")).toBeVisible();
+    const submit = deanPage.getByRole("button", { name:"Сохранить исправление", exact:true });
+    await expect(submit).toBeDisabled();
+    await deanPage.getByLabel("Новая оценка", { exact:true }).selectOption("5");
+    await deanPage.getByLabel("Причина исправления", { exact:true }).fill("Исправлена ошибка переноса");
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    await expect(deanPage.getByRole("status")).toContainText("Оценка исправлена");
+    expect(correctionBody).toMatchObject({ version:2, rows:[{studentId:"graded",grade:5,reason:"Исправлена ошибка переноса"}] });
+  } finally {
+    await deanPage.close();
+  }
 });
 test("assigned teacher explicitly enables final correction with mandatory reason", async ({page}, testInfo) => {
   await page.route("**/api/identity/session",r=>r.fulfill({json:{userId:"teacher",universityId:"demo",displayName:"Тестовый преподаватель",roles:["Staff","Teacher"],permissions:[{permission:"grades.read",groupId:"group"},{permission:"grades.write",groupId:"group"}],areas:["staff"]}}));

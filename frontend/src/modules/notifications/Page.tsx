@@ -1,6 +1,8 @@
 ﻿import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import { PageHeader } from '../../components/ui/primitives';
+import { InlineError } from '../../shared/states';
 import { useNotifications } from './state';
 import { requestDetailsUrl } from '../requests/model';
 
@@ -11,14 +13,9 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 const categories = { grade: 'Оценки', schedule: 'Расписание', request: 'Заявки', announcement: 'Объявления' };
 
 export function NotificationContent({ compact = false }: { compact?: boolean }) {
-  const { items, state, refresh, read, busy } = useNotifications();
+  const { items, state, error, refresh, read, busy } = useNotifications();
   if (state === 'loading') return <p role="status">Загружаем уведомления…</p>;
-  if (state === 'error') return (
-    <div role="alert">
-      <p>Не удалось загрузить уведомления. Попробуйте ещё раз.</p>
-      <Button variant="outline" onClick={() => void refresh()}>Повторить</Button>
-    </div>
-  );
+  if (state === 'error') return <InlineError message={error || "Не удалось загрузить уведомления. Проверьте соединение и повторите попытку."} onRetry={() => void refresh()} />;
   if (!items.length) return <p>Уведомлений пока нет</p>;
   const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   return (
@@ -60,11 +57,11 @@ export function NotificationSummary() {
 }
 
 export function Page() {
-  const { unread, read, busy, error } = useNotifications();
+  const { unread, read, busy, error, state } = useNotifications();
   return (
     <div className="notifications-page">
-      <h1>Уведомления</h1>
-      {error && <p role="alert">{error}</p>}
+      <PageHeader title="Уведомления" />
+      {error && state !== 'error' && <InlineError message={error} />}
       <section className="card">
         <div className="notifications-toolbar">
           <p role="status">{unread === null ? 'Счётчик недоступен' : `Непрочитанных: ${unread}`}</p>

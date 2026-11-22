@@ -23,9 +23,9 @@ for (const account of [
     await expect(page).toHaveURL(new RegExp(`/${account.area}$`));
     if (account.name) {
       await expect(page.getByRole("heading", { name: `Здравствуйте, ${account.name}` })).toBeVisible();
-      await expect(page.getByText("Демонстрационные данные — не связаны", { exact: false })).toBeVisible();
+      await expect(page.getByText("Демонстрационные данные:", { exact: false })).toHaveCount(0);
     } else {
-      await expect(page.getByText("РАБОЧЕЕ МЕСТО СОТРУДНИКА")).toBeVisible();
+      await expect(page.getByText("Рабочее место сотрудника", { exact: true })).toBeVisible();
     }
     await page.reload();
     await expect(page).toHaveURL(new RegExp(`/${account.area}$`));

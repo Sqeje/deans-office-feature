@@ -57,3 +57,9 @@ public interface IRequestNotifications
 {
     void StatusChanged(Guid universityId, string studentId, Guid requestId, long version, string status, DateTimeOffset occurredAt);
 }
+
+public interface IAcademicGradeNotifications
+{
+    void GradeChanged(Guid universityId, string studentId, Guid lessonId, string courseName,
+        DateOnly lessonDate, int? previousGrade, int? grade, long journalVersion, DateTimeOffset occurredAt);
+}

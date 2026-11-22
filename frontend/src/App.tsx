@@ -6,6 +6,7 @@ import { modulePages } from "./modules/sections";
 import { SessionProvider } from "./shared/session";
 import { Cabinet, PageAccess } from "./shared/Cabinet";
 import { EmptyState } from "./shared/states";
+import { PageHeader } from "./components/ui/primitives";
 function LegacyRedirect() {
   const l = useLocation();
   return (
@@ -56,7 +57,7 @@ export function App() {
           path="*"
           element={
             <main className="p-8">
-              <h1>Страница не найдена</h1>
+              <PageHeader title="Страница не найдена" />
               <Link to="/">На главную</Link>
             </main>
           }

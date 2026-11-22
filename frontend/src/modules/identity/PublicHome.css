@@ -216,11 +216,6 @@
   display: table;
   margin: 24px 0 16px;
 }
-.applicants-lead {
-  color: var(--color-text-muted);
-  font-size: 18px;
-  line-height: 28px;
-}
 .applicants-login {
   display: inline-flex;
   align-items: center;

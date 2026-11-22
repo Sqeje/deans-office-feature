@@ -22,6 +22,7 @@ public sealed class LessonJournalEntry
  public string StudentId {get;set;} = "";
  public int? Grade {get;set;}
  public AttendanceMark Attendance {get;set;}
+ public string? CorrectionReason {get;set;}
 }
 public sealed class LessonJournalConfiguration : IEntityTypeConfiguration<LessonJournal>
 {
@@ -35,18 +36,20 @@ public sealed class LessonJournalEntryConfiguration : IEntityTypeConfiguration<L
 {
  public void Configure(EntityTypeBuilder<LessonJournalEntry> b) {
  b.HasKey(x=>x.Id); b.Property(x=>x.StudentId).HasMaxLength(450);
+ b.Property(x=>x.CorrectionReason).HasMaxLength(1000);
  b.HasIndex(x=>new{x.JournalId,x.StudentId}).IsUnique();
  b.ToTable(t=> { t.HasCheckConstraint("CK_Journal_Grade", "\"Grade\" IS NULL OR \"Grade\" BETWEEN 2 AND 5"); t.HasCheckConstraint("CK_Journal_Attendance", "\"Attendance\" IN (0,1,2)"); });
  }
 }
-public sealed record JournalRowInput(string StudentId,int? Grade,AttendanceMark Attendance);
+public sealed record JournalRowInput(string StudentId,int? Grade,AttendanceMark Attendance,string? Reason = null);
 public sealed record SaveJournalRequest(long Version,JournalRowInput[] Rows);
-public sealed record JournalRowDto(string StudentId,string FullName,int? Grade,AttendanceMark Attendance);
+public sealed record JournalRowDto(string StudentId,string FullName,int? Grade,AttendanceMark Attendance,string? CorrectionReason);
 public sealed record JournalLessonDto(Guid LessonId,DateTimeOffset StartsAt,string Subject,bool IsCancelled,bool CanEdit,string? ReadOnlyReason,long Version,JournalRowDto[] Rows);
 public sealed record JournalResponse(Guid CourseId,string CourseName,Guid GroupId,string SemesterId,JournalLessonDto[] Lessons);
+public sealed record JournalCourseDto(Guid CourseId,string CourseName,Guid GroupId,string GroupName,string SemesterId);
 public static class JournalRules {
  public static void Validate(JournalRowInput[] rows) {
- if(rows.Length>500 || rows.Select(x=>x.StudentId).Distinct().Count()!=rows.Length || rows.Any(x=>string.IsNullOrWhiteSpace(x.StudentId)|| x.Grade is <2 or >5 || !Enum.IsDefined(x.Attendance)))
+ if(rows.Length>500 || rows.Select(x=>x.StudentId).Distinct().Count()!=rows.Length || rows.Any(x=>string.IsNullOrWhiteSpace(x.StudentId)|| x.Grade is <2 or >5 || !Enum.IsDefined(x.Attendance) || x.Reason?.Length>1000))
  throw new InputValidationException(new Dictionary<string,string[]> { ["rows"]=["Проверьте студентов, оценки от 2 до 5 и посещаемость."] });
  }
 }

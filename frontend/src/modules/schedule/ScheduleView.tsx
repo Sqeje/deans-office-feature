@@ -4,6 +4,8 @@ import { ApiError } from "../../shared/api";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { WeekPicker } from "./WeekPicker";
 import { Button } from "../../components/ui/button";
+import { PageHeader } from "../../components/ui/primitives";
+import { ErrorPanel } from "../../shared/states";
 import { scheduleSource } from "./source";
 import { ScheduleRow } from "./Rows";
 import { ExportButton } from "./ExportButton";
@@ -103,9 +105,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
   if (state.status === "error" && state.error instanceof ApiError && state.error.status === 401)
     return <Navigate to="/login" state={{ expired: true }} replace />;
   return <>
-    <div className="schedule-view-header">
-      <div>{heading && <h1>{heading}</h1>}{description && <p className="muted">{description}</p>}</div>
-      <div className="schedule-view-actions">
+    <PageHeader title={heading} description={description} className="schedule-view-header" action={<div className="schedule-view-actions">
         <Button type="button" variant="outline" className="schedule-actions-toggle" aria-expanded={actionsOpen} aria-controls={actionsId}
           onClick={() => setActionsOpen(open => !open)}>Дополнительные действия <ChevronDown aria-hidden="true" /></Button>
         <div id={actionsId} className="schedule-actions-panel" data-open={actionsOpen}>
@@ -114,8 +114,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
               start: category === "lesson" && mode === "today" ? selectedDay : start,
               end: category === "lesson" && mode === "today" ? selectedDay : end }} />
         </div>
-      </div>
-    </div>
+      </div>} />
     <div className="schedule-modes schedule-kind-modes" role="group" aria-label="Тип событий">
       <Button variant="outline" aria-pressed={category === "lesson"} onClick={() => update({ kind: "lessons" })}>Занятия</Button>
       <Button variant="outline" aria-pressed={category === "assessment"} onClick={() => update({ kind: "assessments" })}>Контрольные и экзамены</Button>
@@ -138,7 +137,7 @@ export function ScheduleView({ entity, heading, description, source = scheduleSo
     <p className="schedule-zone muted">Московское время · UTC+3</p>
     <div aria-busy={state.status === "loading"}>
       {state.status === "loading" ? <div className="card schedule-loading" role="status">Загружаем расписание…</div>
-        : state.status === "error" ? <div className="card" role="alert"><p>{state.error instanceof ApiError && state.error.status === 403 ? "Нет доступа к расписанию." : "Не удалось загрузить расписание."}</p>{state.error instanceof ApiError && state.error.traceId && <p className="muted">Код обращения: {state.error.traceId}</p>}<Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Повторить</Button></div>
+        : state.status === "error" ? <ErrorPanel title={state.error instanceof ApiError && state.error.status === 403 ? "Нет доступа к расписанию" : "Не удалось загрузить расписание"} message={state.error instanceof ApiError && state.error.status === 403 ? "Обратитесь к сотруднику деканата." : "Проверьте соединение и повторите попытку."} traceId={state.error instanceof ApiError ? state.error.traceId : undefined} onRetry={state.error instanceof ApiError && state.error.status === 403 ? undefined : () => setAttempt(value => value + 1)} />
         : category === "assessment" && visible.length === 0 ? <Empty text="В этом семестре контрольных и экзаменов нет" />
         : days.map(day => {
           const lessons = visible.filter(e => dateKey(new Date(e.startsAt)) === day);
